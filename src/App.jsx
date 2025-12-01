@@ -2,24 +2,39 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { ProfileStep } from './components/steps/ProfileStep';
 import { MeasurementStep } from './components/steps/MeasurementStep';
+import { ResultStep } from './components/steps/ResultStep';
 
 function App() {
   const [currentStep, setCurrentStep] = useState('profile');
   const [userData, setUserData] = useState(null);
+  const [measurements, setMeasurements] = useState(null);
 
   const handleProfileSubmit = (data) => {
     setUserData(data);
     setCurrentStep('measure');
   };
 
-  const handleMeasurementSubmit = (measurements) => {
-    console.log("최종 데이터:", { ...userData, ...measurements });
-    alert(`측정 완료!\n나이: ${userData.age}, 성별: ${userData.gender}\n플랭크: ${measurements.plank}초\n스쿼트: ${measurements.squat}회\n유연성: ${measurements.flexibility}cm`);
+  const handleMeasurementSubmit = (data) => {
+    setMeasurements(data);
+    setCurrentStep('result');
+  };
+  
+  const handleReset = () => {
+    setUserData(null);
+    setMeasurements(null);
+    setCurrentStep('profile');
   };
 
+  // 결과 페이지일 때만 화면을 넓게 씁니다.
+  const isResultPage = currentStep === 'result';
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-blue-100">
-      <main className="max-w-md mx-auto min-h-screen flex flex-col p-6 relative">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 font-sans selection:bg-blue-100 transition-colors duration-500">
+      <main 
+        className={`mx-auto min-h-screen flex flex-col p-6 relative transition-all duration-500 ease-in-out ${
+          isResultPage ? 'max-w-4xl' : 'max-w-md'
+        }`}
+      >
         
         {/* Header */}
         <header className="flex justify-between items-center py-6">
@@ -37,13 +52,21 @@ function App() {
         </header>
 
         {/* Content */}
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col justify-center">
           <AnimatePresence mode='wait'>
             {currentStep === 'profile' && (
               <ProfileStep key="profile" onNext={handleProfileSubmit} />
             )}
             {currentStep === 'measure' && (
               <MeasurementStep key="measure" userData={userData} onSubmit={handleMeasurementSubmit} />
+            )}
+            {currentStep === 'result' && (
+              <ResultStep 
+                key="result" 
+                userData={userData} 
+                measurements={measurements} 
+                onReset={handleReset}
+              />
             )}
           </AnimatePresence>
         </div>
