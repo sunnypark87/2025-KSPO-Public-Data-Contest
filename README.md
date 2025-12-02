@@ -3,7 +3,9 @@
 ## 프로젝트 배경
 
 
-## 설치 방법
+## 실행 방법
+- 필요한 프로그램 설치
+
 - 프로젝트 파일 설치
 ```bash
 $ git clone https://github.com/sunnypark87/2025-KSPO-Public-Data-Contest.git
