@@ -43,7 +43,7 @@ function App() {
                 R
             </div>
             <div className="font-extrabold text-xl tracking-tight text-slate-900">
-                Running<span className="text-blue-600">Doctor</span>
+                Run<span className="text-blue-600">BTI</span>
             </div>
           </div>
           <div className="text-[10px] font-bold bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm text-slate-400 uppercase tracking-wider">
