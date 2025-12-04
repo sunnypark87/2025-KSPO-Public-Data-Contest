@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Share2, RefreshCw, Trophy, AlertTriangle, CheckCircle, Info, Activity, Zap, Shield, Move, X, ChevronRight, PlayCircle, Grid, User } from 'lucide-react';
 import { Button } from '../common/Button';
-import { analyzeRunBTI, RUN_BTI_TYPES } from '../../utils/runBtiLogic'; // [중요] RUN_BTI_TYPES 추가 import
+import { analyzeRunBTI, RUN_BTI_TYPES } from '../../utils/runBtiLogic'; 
 import { getRecommendedExercises } from '../../data/exerciseDatabase';
 
 // 능력치 막대 그래프 컴포넌트
@@ -30,12 +30,7 @@ const AbilityBar = ({ label, score, icon, colorClass, bgClass, barColor }) => {
                 </div>
             </div>
             <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${safeScore}%` }}
-                    transition={{ duration: 1.2, ease: "easeOut" }}
-                    className={`h-full rounded-full ${barColor}`}
-                />
+                <motion.div initial={{ width: 0 }} animate={{ width: `${safeScore}%` }} transition={{ duration: 1.2, ease: "easeOut" }} className={`h-full rounded-full ${barColor}`} />
             </div>
         </div>
     );
@@ -43,18 +38,17 @@ const AbilityBar = ({ label, score, icon, colorClass, bgClass, barColor }) => {
 
 export const ResultStep = ({ userData, measurements, onReset }) => {
   const [showDetail, setShowDetail] = useState(false);
-  const [activeTab, setActiveTab] = useState('MY_RESULT'); // [복구] 탭 상태
-  const [selectedType, setSelectedType] = useState(null); // [복구] 도감 선택 상태
+  const [activeTab, setActiveTab] = useState('MY_RESULT'); 
+  const [selectedType, setSelectedType] = useState(null); 
   const [selectedVideo, setSelectedVideo] = useState(null);
 
-  // 데이터 분석 (안전장치 포함)
+  // 데이터 분석
   const analysisResult = analyzeRunBTI(measurements || {}, userData?.age) || {};
   
   const { 
     bti = '----', 
     result: btiInfo = { name: '분석 중...', desc: '데이터를 분석하고 있습니다.', tags: [] }, 
     chartScores = { power: 0, core: 0, flexibility: 0, agility: 0 }, 
-    scores = { engine: '-', chassis: '-', suspension: '-', gear: '-' },
     prescription = [] 
   } = analysisResult;
 
@@ -79,20 +73,28 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
   const genderRaw = userData?.gender ? String(userData.gender).toUpperCase() : 'M';
   const genderDisplay = (genderRaw === 'M' || genderRaw === 'MALE' || genderRaw === '남성') ? '남성' : '여성';
 
-  // 모달 닫기 핸들러
   const closeDetailModal = () => {
       setShowDetail(false);
       setActiveTab('MY_RESULT');
       setSelectedType(null);
   };
 
+  // [NEW] 클립보드 복사 기능 구현
+  const handleShare = async () => {
+    const shareText = `🏃‍♂️ RunBTI 러닝 성향 분석 결과\n\n나의 유형: [${bti}] ${btiInfo.name}\n특징: "${btiInfo.desc}"\n\n나에게 딱 맞는 러닝 가이드와 운동 처방이 궁금하다면?\n👉 ${window.location.href} #RunBTI #러닝분석`;
+
+    try {
+        await navigator.clipboard.writeText(shareText);
+        alert("결과가 클립보드에 복사되었습니다! \n인스타그램, 카카오톡 등에 붙여넣기(Ctrl+V) 하여 공유해보세요.");
+    } catch (err) {
+        console.error("복사 실패:", err);
+        alert("브라우저가 클립보드 복사를 지원하지 않습니다.");
+    }
+  };
+
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="space-y-6 pb-10"
-      >
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 pb-10">
         <div className="text-center space-y-2 mb-2">
           <h2 className="text-2xl font-bold text-slate-800">RunBTI 분석 리포트</h2>
           <p className="text-slate-500 text-sm">
@@ -184,14 +186,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                       const recommendedVideo = videos && videos.length > 0 ? videos[0] : null;
 
                       return (
-                          <div 
-                              key={idx} 
-                              className={`p-5 rounded-2xl border flex flex-col gap-4 ${
-                                  item.type === 'success' ? 'bg-green-50 border-green-100' : 
-                                  item.type === 'danger' ? 'bg-red-50 border-red-100' :
-                                  'bg-slate-50 border-slate-100'
-                              }`}
-                          >
+                          <div key={idx} className={`p-5 rounded-2xl border flex flex-col gap-4 ${item.type === 'success' ? 'bg-green-50 border-green-100' : item.type === 'danger' ? 'bg-red-50 border-red-100' : 'bg-slate-50 border-slate-100'}`}>
                               <div>
                                   <div className="flex items-start gap-3 mb-2">
                                       {item.type === 'success' ? <CheckCircle className="text-green-500 shrink-0" size={20}/> : <AlertTriangle className={`${item.type === 'danger' ? 'text-red-500' : 'text-orange-500'} shrink-0`} size={20}/>}
@@ -206,19 +201,10 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                               </div>
 
                               {recommendedVideo && (
-                                  <div 
-                                      onClick={() => setSelectedVideo(recommendedVideo)}
-                                      className="ml-8 mt-2 bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group flex items-center gap-3 pr-3 hover:border-blue-300 transition-colors"
-                                  >
+                                  <div onClick={() => setSelectedVideo(recommendedVideo)} className="ml-8 mt-2 bg-white rounded-xl overflow-hidden shadow-sm border border-slate-200 cursor-pointer group flex items-center gap-3 pr-3 hover:border-blue-300 transition-colors">
                                       <div className="w-20 h-14 bg-slate-200 relative shrink-0">
-                                          <img 
-                                              src={getThumbnail(recommendedVideo.videoUrl)} 
-                                              alt={recommendedVideo.name}
-                                              className="w-full h-full object-cover"
-                                          />
-                                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10">
-                                              <PlayCircle className="text-white drop-shadow-md" size={20} />
-                                          </div>
+                                          <img src={getThumbnail(recommendedVideo.videoUrl)} alt={recommendedVideo.name} className="w-full h-full object-cover" />
+                                          <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/10"><PlayCircle className="text-white drop-shadow-md" size={20} /></div>
                                       </div>
                                       <div className="flex-1 min-w-0 py-2">
                                           <div className="text-[10px] text-blue-500 font-bold mb-0.5">추천 운동</div>
@@ -238,14 +224,20 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
         </div>
 
         <div className="flex gap-4 pt-2 max-w-md mx-auto">
-          <Button variant="secondary" onClick={onReset} className="flex-1 bg-slate-100 text-slate-600 border-none hover:bg-slate-200 transition-colors"><RefreshCw size={18} /> 다시 측정</Button>
-          <Button variant="primary" className="flex-1 bg-slate-900 shadow-xl shadow-slate-200"><Share2 size={18} /> 결과 공유</Button>
+          <Button variant="secondary" onClick={onReset} className="flex-1 bg-slate-100 text-slate-600 border-none hover:bg-slate-200 transition-colors">
+             <RefreshCw size={18} /> 다시 측정
+          </Button>
+          
+          {/* 공유 버튼 연결 */}
+          <Button variant="primary" onClick={handleShare} className="flex-1 bg-slate-900 shadow-xl shadow-slate-200">
+             <Share2 size={18} /> 결과 공유
+          </Button>
         </div>
       </motion.div>
 
       {/* [통합 모달] 내 결과 & 유형 도감 */}
       <AnimatePresence>
-        {showDetail && (
+        {showDetail && btiInfo && (
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
@@ -260,7 +252,6 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                 <X size={20} className="text-slate-600" />
               </button>
 
-              {/* 탭 버튼 */}
               <div className="flex gap-2 mb-6 border-b border-slate-100 pb-1">
                   <button 
                     onClick={() => { setActiveTab('MY_RESULT'); setSelectedType(null); }}
@@ -276,7 +267,6 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                   </button>
               </div>
 
-              {/* 탭 1: 내 결과 */}
               {activeTab === 'MY_RESULT' && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                       <div className="text-center mb-6">
@@ -284,21 +274,14 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                          <h2 className="text-4xl font-black text-slate-800 mb-1">{bti}</h2>
                          <span className="text-xl font-bold text-slate-500">{btiInfo.name}</span>
                       </div>
-
                       <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                        <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                            <Info size={18} className="text-blue-500"/> 유형 특징
-                        </h3>
+                        <h3 className="font-bold text-slate-800 mb-2 flex items-center gap-2"><Info size={18} className="text-blue-500"/> 유형 특징</h3>
                         <p className="text-slate-600 text-sm leading-relaxed">{btiInfo.feature}</p>
                       </div>
-
                       <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100">
-                        <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                            <Activity size={18} className="text-blue-600"/> 추천 러닝 가이드
-                        </h3>
+                        <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2"><Activity size={18} className="text-blue-600"/> 추천 러닝 가이드</h3>
                         <p className="text-blue-700 text-sm leading-relaxed font-medium">{btiInfo.runningGuide}</p>
                       </div>
-                      
                       <div className="bg-slate-50 p-4 rounded-xl text-center border border-slate-100">
                           <p className="text-xs text-slate-400 mb-2">이 유형의 키워드</p>
                           <div className="flex flex-wrap gap-2 justify-center">
@@ -310,18 +293,12 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                   </motion.div>
               )}
 
-              {/* 탭 2: 전체 유형 도감 */}
               {activeTab === 'ALL_TYPES' && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                       {!selectedType ? (
-                          // 목록 뷰
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
                               {Object.entries(RUN_BTI_TYPES).map(([code, info]) => (
-                                  <div 
-                                    key={code} 
-                                    onClick={() => setSelectedType({ code, ...info })}
-                                    className={`p-3 rounded-xl border cursor-pointer transition-all hover:scale-105 hover:shadow-md text-center flex flex-col justify-center min-h-[100px] ${code === bti ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-100' : 'bg-white border-slate-200 hover:border-blue-200'}`}
-                                  >
+                                  <div key={code} onClick={() => setSelectedType({ code, ...info })} className={`p-3 rounded-xl border cursor-pointer transition-all hover:scale-105 hover:shadow-md text-center flex flex-col justify-center min-h-[100px] ${code === bti ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-100' : 'bg-white border-slate-200 hover:border-blue-200'}`}>
                                       <div className={`font-black text-lg mb-1 ${code === bti ? 'text-blue-600' : 'text-slate-700'}`}>{code}</div>
                                       <div className="text-[10px] text-slate-500 line-clamp-2 leading-tight">{info.name}</div>
                                       {code === bti && <div className="mt-2 text-[9px] bg-blue-100 text-blue-600 rounded px-1 py-0.5 inline-block w-fit mx-auto">나의 유형</div>}
@@ -329,22 +306,18 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                               ))}
                           </div>
                       ) : (
-                          // 상세 뷰
                           <div className="space-y-6">
                               <button onClick={() => setSelectedType(null)} className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-slate-600 mb-2">
                                   <ChevronRight size={14} className="rotate-180"/> 목록으로 돌아가기
                               </button>
-                              
                               <div className="text-center">
                                  <h2 className="text-3xl font-black text-slate-800 mb-1">{selectedType.code}</h2>
                                  <span className="text-xl font-bold text-slate-500">{selectedType.name}</span>
                               </div>
-
                               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
                                 <h3 className="font-bold text-slate-800 mb-2">유형 특징</h3>
                                 <p className="text-slate-600 text-sm leading-relaxed">{selectedType.feature}</p>
                               </div>
-
                               <div className="bg-white p-5 rounded-2xl border border-slate-200">
                                 <h3 className="font-bold text-slate-800 mb-2">러닝 가이드</h3>
                                 <p className="text-slate-600 text-sm leading-relaxed">{selectedType.runningGuide}</p>
@@ -361,31 +334,14 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
       {/* 비디오 재생 모달 */}
       <AnimatePresence>
         {selectedVideo && (
-            <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-4"
-                onClick={() => setSelectedVideo(null)}
-            >
-                <motion.div 
-                    initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }}
-                    className="w-full max-w-3xl bg-black rounded-2xl overflow-hidden shadow-2xl relative"
-                    onClick={(e) => e.stopPropagation()}
-                >
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-4" onClick={() => setSelectedVideo(null)}>
+                <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="w-full max-w-3xl bg-black rounded-2xl overflow-hidden shadow-2xl relative" onClick={(e) => e.stopPropagation()}>
                     <button onClick={() => setSelectedVideo(null)} className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 p-2 bg-black/50 rounded-full"><X size={24}/></button>
                     <div className="aspect-video w-full">
-                        <iframe 
-                            src={selectedVideo.videoUrl} 
-                            title={selectedVideo.name}
-                            className="w-full h-full" 
-                            allow="autoplay; encrypted-media; gyroscope; picture-in-picture" 
-                            allowFullScreen
-                        ></iframe>
+                        <iframe src={selectedVideo.videoUrl} title={selectedVideo.name} className="w-full h-full" allow="autoplay; encrypted-media; gyroscope; picture-in-picture" allowFullScreen></iframe>
                     </div>
                     <div className="p-6 bg-slate-900 text-white">
-                        <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
-                            <PlayCircle size={20} className="text-blue-500" />
-                            {selectedVideo.name}
-                        </h3>
+                        <h3 className="text-xl font-bold mb-2 flex items-center gap-2"><PlayCircle size={20} className="text-blue-500" />{selectedVideo.name}</h3>
                         <p className="text-slate-400 text-sm leading-relaxed">{selectedVideo.desc}</p>
                         <div className="flex gap-2 mt-4 flex-wrap">
                             {selectedVideo.tags && selectedVideo.tags.map((tag, i) => (

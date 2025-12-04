@@ -10,17 +10,18 @@ import { getStandard } from '../../constants/standards';
 // [이미지 Import] constants 폴더의 월시트 사진 가져오기
 import wallSitPic from '../../constants/wall-sit-pic.png';
 
-// [타이머 컴포넌트]
-const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, userAge, guideUrl, precautions }) => {
+// [타이머 컴포넌트] (수정 없음)
+const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, userAge, userGender, guideUrl, precautions }) => {
   const { timeMs, progress, isRunning, isFinished, start, pause, reset } = useExerciseTimer(duration, bpm);
   const [status, setStatus] = useState('idle'); 
   const [showGuide, setShowGuide] = useState(false);
 
-  const standard = getStandard(type, userAge);
+  // [수정] 성별 정보 전달
+  const standard = getStandard(type, userAge, userGender);
 
   // 유튜브 URL 판별 및 변환
   const getYoutubeEmbedUrl = (url) => {
-    if (!url || typeof url !== 'string') return null; // url이 문자열이 아니면(이미지 객체 등) 패스
+    if (!url || typeof url !== 'string') return null; 
     let videoId = null;
     if (url.includes('youtu.be/')) {
         videoId = url.split('youtu.be/')[1]?.split('?')[0];
@@ -31,7 +32,6 @@ const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, 
     return videoId ? `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1` : null;
   };
 
-  // 문자열이고 youtube가 포함된 경우만 비디오로 간주
   const isVideo = typeof guideUrl === 'string' && (guideUrl.includes('youtube') || guideUrl.includes('youtu.be'));
   const embedUrl = isVideo ? getYoutubeEmbedUrl(guideUrl) : guideUrl;
 
@@ -221,10 +221,11 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
   const isComplete = results.plank !== null && results.wallSit !== null && 
                      results.squat !== null && results.hopping !== null;
 
-  const flexStandard = getStandard('flexibility', userData.age);
-  const squatStandard = getStandard('squat', userData.age);
-  const plankStandard = getStandard('plank', userData.age);
-  const wallSitStandard = getStandard('wallSit', userData.age);
+  // [수정] 성별(userData.gender) 정보 추가 전달
+  const flexStandard = getStandard('flexibility', userData.age, userData.gender);
+  const squatStandard = getStandard('squat', userData.age, userData.gender);
+  const plankStandard = getStandard('plank', userData.age, userData.gender);
+  const wallSitStandard = getStandard('wallSit', userData.age, userData.gender);
 
   return (
     <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} className="space-y-8 pb-10">
@@ -243,6 +244,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
             duration={plankStandard || 60}
             type="plank"
             userAge={userData.age}
+            userGender={userData.gender} // [수정] 성별 전달
             onResult={(val) => setResults(prev => ({ ...prev, plank: val }))} 
             guideUrl="https://youtu.be/i_TtjVYn9fQ"
             precautions={[
@@ -260,8 +262,8 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
             duration={wallSitStandard || 60}
             type="wallSit"
             userAge={userData.age}
+            userGender={userData.gender} // [수정] 성별 전달
             onResult={(val) => setResults(prev => ({ ...prev, wallSit: val }))} 
-            // [수정] import한 이미지 변수 사용
             guideUrl={wallSitPic} 
             precautions={[
                 "등과 엉덩이를 벽에 완전히 밀착시키세요.",
@@ -298,6 +300,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                 duration={60}
                 type="squat"
                 userAge={userData.age}
+                userGender={userData.gender} // [수정] 성별 전달
                 onResult={(val) => {
                     if(val === 'INPUT_REQUIRED' || val >= 60000) setShowSquatInput(true);
                 }}
@@ -319,6 +322,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
             bpm={160}
             type="hopping"
             userAge={userData.age}
+            userGender={userData.gender} // [수정] 성별 전달
             onResult={(val) => setResults(prev => ({ ...prev, hopping: val }))} 
             guideUrl="https://www.youtube.com/watch?v=uy1T5QNARJ4"
             precautions={[
@@ -388,7 +392,10 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
       <Button
         variant="primary"
         disabled={!isComplete}
-        onClick={() => onSubmit(results)}
+        onClick={() => {
+            window.scrollTo(0, 0); 
+            onSubmit(results);
+        }}
         className="w-full py-4 text-lg shadow-xl shadow-blue-500/20"
       >
         진단 결과 보기 <CheckCircle2 size={24} />
