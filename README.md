@@ -1,16 +1,27 @@
-# React + Vite
+# Running Doctor (가제)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 프로젝트 배경
 
-Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 실행 방법
+- 필요한 프로그램 설치
 
-## React Compiler
+- 프로젝트 파일 설치
+```bash
+$ git clone https://github.com/sunnypark87/2025-KSPO-Public-Data-Contest.git
+```
 
-The React Compiler is currently not compatible with SWC. See [this issue](https://github.com/vitejs/vite-plugin-react/issues/428) for tracking the progress.
+- 변경된 코드 받아오기
+```bash
+$ git pull
+```
 
-## Expanding the ESLint configuration
+- 패키지 설치
+```bash
+$ npm i
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- 프로젝트 실행
+```bash
+$ npm run dev
+```
