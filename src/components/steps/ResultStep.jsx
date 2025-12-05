@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Share2, RefreshCw, Trophy, AlertTriangle, CheckCircle, Info, Activity, Zap, Shield, Move, X, ChevronRight, PlayCircle, Grid, User } from 'lucide-react';
+import { toBlob } from 'html-to-image';
+import { Share2, RefreshCw, AlertTriangle, CheckCircle, Info, Activity, Zap, Shield, Move, X, ChevronRight, PlayCircle, Grid, User, MessageCircle, Copy } from 'lucide-react';
 import { Button } from '../common/Button';
 import { analyzeRunBTI, RUN_BTI_TYPES } from '../../utils/runBtiLogic'; 
 import { getRecommendedExercises } from '../../data/exerciseDatabase';
@@ -41,6 +42,33 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
   const [activeTab, setActiveTab] = useState('MY_RESULT'); 
   const [selectedType, setSelectedType] = useState(null); 
   const [selectedVideo, setSelectedVideo] = useState(null);
+  
+  const [isSharing, setIsSharing] = useState(false);
+  const shareCardRef = useRef(null);
+
+  // 웹 공유 API 가능 여부
+  const [canWebShare, setCanWebShare] = useState(false);
+
+  // Kakao SDK 초기화 및 Web Share 체크
+  useEffect(() => {
+    // 1. Web Share Check
+    if (navigator.share && navigator.canShare && shareCardRef.current) {
+        // 초기에 간단히 파일 공유 가능성 체크 (Blob 생성 없이)
+        // 실제 파일 공유 가능 여부는 handleWebShare에서 실제 파일로 체크하는 것이 더 정확할 수 있으나,
+        // UI 분기를 위해 여기서는 navigator.canShare API 존재 여부와 기본 share 지원 여부를 봅니다.
+        setCanWebShare(true);
+    }
+
+    // 2. Kakao Init
+    if (Kakao && !Kakao.isInitialized()) {
+        try {
+            Kakao.init(import.meta.env.VITE_KAKAO_API_KEY); 
+            console.log("Kakao SDK Initialized");
+        } catch (e) {
+            console.err("Kakao SDK Init Failed (Check Key):", e);
+        }
+    }
+  }, []);
 
   // 데이터 분석
   const analysisResult = analyzeRunBTI(measurements || {}, userData?.age) || {};
@@ -49,23 +77,21 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
     bti = '----', 
     result: btiInfo = { name: '분석 중...', desc: '데이터를 분석하고 있습니다.', tags: [] }, 
     chartScores = { power: 0, core: 0, flexibility: 0, agility: 0 }, 
-    prescription = [] 
-  } = analysisResult;
-
-  let weaknessType = 'ALL_GOOD';
-  if (bti && bti.includes('W')) weaknessType = 'W'; 
-  else if (bti && bti.includes('R')) weaknessType = 'R'; 
-  else if (bti && bti.includes('B')) weaknessType = 'B'; 
-  else if (bti && bti.includes('P')) weaknessType = 'P_WEAK_CORE'; 
-  
-  const recommendedVideos = getRecommendedExercises(weaknessType) || [];
-
-  const getThumbnail = (url) => {
+        prescription = [] 
+      } = analysisResult;
+    
+      // let weaknessType = 'ALL_GOOD';
+      // if (bti && bti.includes('W')) weaknessType = 'W'; 
+      // else if (bti && bti.includes('R')) weaknessType = 'R'; 
+      // else if (bti && bti.includes('B')) weaknessType = 'B'; 
+      // else if (bti && bti.includes('P')) weaknessType = 'P_WEAK_CORE'; 
+      
+      const getThumbnail = (url) => {
       if (!url) return ''; 
       try {
           const id = url.split('/').pop();
           return `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
-      } catch (e) {
+      } catch {
           return '';
       }
   };
@@ -79,17 +105,115 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
       setSelectedType(null);
   };
 
-  // [NEW] 클립보드 복사 기능 구현
-  const handleShare = async () => {
-    const shareText = `🏃‍♂️ RunBTI 러닝 성향 분석 결과\n\n나의 유형: [${bti}] ${btiInfo.name}\n특징: "${btiInfo.desc}"\n\n나에게 딱 맞는 러닝 가이드와 운동 처방이 궁금하다면?\n👉 ${window.location.href} #RunBTI #러닝분석`;
-
+  // 1. Web Share API 공유 (이미지 파일 공유)
+  const handleWebShare = async () => {
+    if (isSharing) return;
     try {
-        await navigator.clipboard.writeText(shareText);
-        alert("결과가 클립보드에 복사되었습니다! \n인스타그램, 카카오톡 등에 붙여넣기(Ctrl+V) 하여 공유해보세요.");
+        setIsSharing(true);
+        if (!shareCardRef.current) throw new Error('공유 영역을 찾지 못했습니다.');
+
+        const blob = await toBlob(shareCardRef.current, { cacheBust: false, pixelRatio: 2 });
+        if (!blob) throw new Error('이미지를 생성하지 못했습니다.');
+    
+        const file = new File([blob], 'runbti-result.png', { type: 'image/png' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                title: 'RunBTI 러닝 성향 분석 결과',
+                text: `나의 유형: [${bti}] ${btiInfo.name}\n\n${btiInfo.desc}`,
+                files: [file],
+            });
+        } else {
+            // Web Share API는 있지만 파일 공유를 지원하지 않는 경우 등
+            alert('이 브라우저는 이미지 공유를 지원하지 않습니다. 이미지 복사를 시도합니다.');
+            await handleCopyImage(); // 폴백
+        }
     } catch (err) {
-        console.error("복사 실패:", err);
-        alert("브라우저가 클립보드 복사를 지원하지 않습니다.");
+        if (err.name !== 'AbortError') {
+            console.error("Web Share 실패:", err);
+            alert("공유 중 오류가 발생했습니다.");
+        }
+    } finally {
+        setIsSharing(false);
     }
+  };
+
+  // 2. 이미지 복사 (클립보드)
+  const handleCopyImage = async () => {
+    if (isSharing) return;
+    try {
+        setIsSharing(true);
+        if (!shareCardRef.current) throw new Error('이미지 영역 없음');
+        
+        // Safari Fix: Pass the Promise directly to ClipboardItem to prevent user activation from expiring.
+        // Do NOT await toBlob() before calling write().
+        const blobPromise = toBlob(shareCardRef.current, { cacheBust: false, pixelRatio: 2 })
+            .then(blob => {
+                if (!blob) throw new Error('이미지 생성 실패');
+                return blob;
+            });
+
+        if (navigator.clipboard && navigator.clipboard.write) {
+             // Construct ClipboardItem with a Promise (supported in Safari 13.1+ and modern Chrome)
+             const item = new ClipboardItem({ 'image/png': blobPromise });
+             await navigator.clipboard.write([item]);
+             alert('결과 이미지가 클립보드에 복사되었습니다! (붙여넣기로 공유)');
+        } else {
+             if (!window.isSecureContext) {
+                 throw new Error('클립보드 기능은 보안 환경(HTTPS)에서만 사용 가능합니다.');
+             }
+            throw new Error('클립보드 쓰기를 지원하지 않습니다.');
+        }
+    } catch (err) {
+        console.error("이미지 복사 실패:", err);
+        alert(`이미지를 복사하지 못했습니다. 화면을 캡처해주세요. (${err.message})`);
+    } finally {
+        setIsSharing(false);
+    }
+  };
+
+  // 3. 카카오톡 공유 (링크 공유)
+  const handleKakaoShare = async () => {
+    if (!Kakao || !Kakao.isInitialized()) {
+        alert('카카오톡 공유 기능을 사용할 수 없습니다. (SDK 미로드 또는 키 설정 필요)');
+    }
+
+    const blob = await toBlob(shareCardRef.current, { cacheBust: false, pixelRatio: 2 });
+    if (!blob) throw new Error('이미지를 생성하지 못했습니다.');
+
+    const files = new File([blob], 'runbti-result.png', { type: 'image/png' });
+
+    Kakao.Share.uploadImage({
+        file: [files],
+    })
+    .then(function(response) {
+        Kakao.Share.sendDefault({
+            objectType: 'feed',
+            content: {
+              title: `🏃‍♂️ RunBTI: 나의 러닝 유형은 [${bti}]`,
+              description: `${btiInfo.name} - ${btiInfo.desc}`,
+              imageUrl: response.infos.original.url,
+              link: {
+                mobileWebUrl: window.location.href,
+                webUrl: window.location.href,
+              },
+            },
+            buttons: [
+              {
+                title: '결과 확인하기',
+                link: {
+                  mobileWebUrl: window.location.href,
+                  webUrl: window.location.href,
+                },
+              },
+            ],
+          });
+    })
+    .catch(function(error) {
+        console.log(error);
+    });
+
+    
   };
 
   return (
@@ -105,7 +229,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
           {/* [왼쪽] RunBTI 결과 카드 */}
-          <div className="space-y-4 flex flex-col h-full">
+          <div ref={shareCardRef} className="space-y-4 flex flex-col h-full">
               <motion.div 
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -223,15 +347,53 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
            </div>
         </div>
 
-        <div className="flex gap-4 pt-2 max-w-md mx-auto">
-          <Button variant="secondary" onClick={onReset} className="flex-1 bg-slate-100 text-slate-600 border-none hover:bg-slate-200 transition-colors">
-             <RefreshCw size={18} /> 다시 측정
+        <div className="flex gap-3 pt-2 max-w-xl mx-auto">
+          <Button
+            variant="secondary"
+            onClick={onReset}
+            className="flex-1 h-11 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200 hover:border-slate-300 transition-colors"
+          >
+            <RefreshCw size={18} /> 다시 측정
           </Button>
-          
-          {/* 공유 버튼 연결 */}
-          <Button variant="primary" onClick={handleShare} className="flex-1 bg-slate-900 shadow-xl shadow-slate-200">
-             <Share2 size={18} /> 결과 공유
-          </Button>
+
+          {/* 조건부 공유 버튼 렌더링 (항상 3버튼 균일 비율) */}
+          {canWebShare ? (
+            <>
+              <Button
+                variant="primary"
+                onClick={handleWebShare}
+                disabled={isSharing}
+                className="flex-1 h-11 rounded-xl bg-slate-900 text-white shadow-md hover:bg-slate-800 transition-colors"
+              >
+                <Share2 size={18} /> 결과 공유하기
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleKakaoShare}
+                className="flex-1 h-11 rounded-xl !bg-[#FEE500] !text-[#0B0B0B] !border-[#F7DC00] hover:!bg-[#FDD835] hover:!border-[#F7D20A] transition-colors"
+              >
+                <MessageCircle size={18} fill="currentColor" /> 카카오톡
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="primary"
+                onClick={handleCopyImage}
+                className="flex-1 h-11 rounded-xl bg-slate-900 text-white shadow-md hover:bg-slate-800 transition-colors"
+              >
+                <Copy size={18} /> 이미지 복사
+              </Button>
+
+              <Button
+                variant="secondary"
+                onClick={handleKakaoShare}
+                className="flex-1 h-11 rounded-xl !bg-[#FEE500] !text-[#0B0B0B] !border-[#F7DC00] hover:!bg-[#FDD835] hover:!border-[#F7D20A] transition-colors"
+              >
+                <MessageCircle size={18} fill="currentColor" /> 카카오톡
+              </Button>
+            </>
+          )}
         </div>
       </motion.div>
 

@@ -286,10 +286,10 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                     <input 
                         type="number" 
                         placeholder="0" 
-                        className="flex-1 p-3 border border-slate-300 rounded-xl text-lg font-bold outline-blue-500"
+                        className="flex-1 p-3 border border-slate-300 rounded-xl text-lg font-bold outline-blue-500 min-w-0"
                         onChange={(e) => setResults(prev => ({ ...prev, squat: parseInt(e.target.value) || 0 }))}
                     />
-                    <button onClick={() => setShowSquatInput(false)} className="bg-blue-600 text-white px-6 rounded-xl font-bold">확인</button>
+                    <button onClick={() => setShowSquatInput(false)} className="bg-blue-600 text-white px-6 rounded-xl font-bold whitespace-nowrap">확인</button>
                 </div>
                 {squatStandard && <p className="text-xs text-slate-400 mt-2">※ {userData.age}대 평균: 약 {squatStandard}회</p>}
              </motion.div>
