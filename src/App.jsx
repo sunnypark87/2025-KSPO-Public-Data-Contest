@@ -73,7 +73,7 @@ function App() {
 
         {/* Footer */}
         <footer className="py-8 text-center text-slate-400 text-[10px] font-medium uppercase tracking-widest opacity-60">
-          © 2025 Running Doctor Project
+          © 2025 PNU-Hub Running Type Project
         </footer>
       </main>
     </div>
