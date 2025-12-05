@@ -388,9 +388,9 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
             variant="primary"
             onClick={handleWebShare}
             disabled={isSharing}
-            className="flex-1 h-11 rounded-xl bg-slate-900 text-white shadow-md hover:bg-slate-800 transition-colors"
+            className="flex-1 h-11 rounded-xl bg-slate-900 text-white shadow-md hover:bg-slate-800 transition-colors whitespace-nowrap"
           >
-            <Share2 size={18} /> 결과 공유하기
+            <Share2 size={18} /> 공유하기
           </Button>
 
           <Button

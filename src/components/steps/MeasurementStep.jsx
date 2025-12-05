@@ -292,7 +292,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
           
           {showSquatInput ? (
              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white p-6 rounded-2xl border border-blue-200 shadow-md">
-                <label className="block text-sm font-bold text-slate-700 mb-2">60초 동안 수행한 횟수는?</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2">수행한 횟수는?</label>
                 <div className="flex gap-2">
                     <input 
                         type="number" 
