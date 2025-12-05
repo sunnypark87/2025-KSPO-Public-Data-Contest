@@ -6,6 +6,17 @@ import { Button } from '../common/Button';
 import { analyzeRunBTI, RUN_BTI_TYPES } from '../../utils/runBtiLogic'; 
 import { getRecommendedExercises } from '../../data/exerciseDatabase';
 
+// 이미지를 동적으로 불러오는 헬퍼 함수
+const getBtiImage = (btiCode) => {
+  try {
+    // assets 폴더의 runbti 경로에서 해당 코드의 png 파일을 찾습니다.
+    return new URL(`../../assets/runbti/${btiCode}.png`, import.meta.url).href;
+  } catch (e) {
+    console.error("Image load failed", e);
+    return null;
+  }
+};
+
 // 능력치 막대 그래프 컴포넌트
 const AbilityBar = ({ label, score, icon, colorClass, bgClass, barColor }) => {
     const safeScore = (score && !isNaN(score)) ? Math.round(score) : 0;
@@ -60,12 +71,12 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
     }
 
     // 2. Kakao Init
-    if (Kakao && !Kakao.isInitialized()) {
+    if (window.Kakao && !window.Kakao.isInitialized()) {
         try {
-            Kakao.init(import.meta.env.VITE_KAKAO_API_KEY); 
+            window.Kakao.init(import.meta.env.VITE_KAKAO_API_KEY); 
             console.log("Kakao SDK Initialized");
         } catch (e) {
-            console.err("Kakao SDK Init Failed (Check Key):", e);
+            console.error("Kakao SDK Init Failed:", e);
         }
     }
   }, []);
@@ -79,6 +90,9 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
     chartScores = { power: 0, core: 0, flexibility: 0, agility: 0 }, 
         prescription = [] 
       } = analysisResult;
+
+      // [추가] 현재 결과(bti)에 맞는 이미지 경로 가져오기
+    const btiImageSrc = getBtiImage(bti);
     
       // let weaknessType = 'ALL_GOOD';
       // if (bti && bti.includes('W')) weaknessType = 'W'; 
@@ -228,45 +242,59 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           
-          {/* [왼쪽] RunBTI 결과 카드 */}
-          <div ref={shareCardRef} className="space-y-4 flex flex-col h-full">
-              <motion.div 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowDetail(true)}
-                  className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-3xl shadow-xl text-center relative overflow-hidden text-white cursor-pointer group flex-1 flex flex-col justify-center items-center min-h-[340px]"
-              >
-                  <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/30 transition-colors"></div>
-                  
-                  <div className="relative z-10 flex flex-col items-center w-full">
-                      <div className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 border border-white/10 shadow-sm">
-                          My RunBTI <ChevronRight size={12} />
-                      </div>
-                      
-                      <h1 className="text-7xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2 drop-shadow-sm">
-                          {bti}
-                      </h1>
-                      
-                      <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-                          {btiInfo.name}
-                      </h2>
-                      
-                      <p className="text-slate-300 text-sm leading-relaxed max-w-[90%] mb-6 line-clamp-3">
-                          {btiInfo.desc}
-                      </p>
+          {/* [왼쪽] RunBTI 결과 카드 부분 찾아서 아래 내용으로 교체 */}
+            <div ref={shareCardRef} className="space-y-4 flex flex-col h-full">
+                <motion.div 
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowDetail(true)}
+                    className="bg-gradient-to-br from-slate-900 to-slate-800 p-6 rounded-3xl shadow-xl text-center relative overflow-hidden text-white cursor-pointer group flex-1 flex flex-col justify-center items-center min-h-[340px]"
+                >
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-blue-500/30 transition-colors"></div>
+                    
+                    <div className="relative z-10 flex flex-col items-center w-full">
+                        <div className="flex items-center gap-1 bg-white/10 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase mb-4 border border-white/10 shadow-sm">
+                            My RunBTI <ChevronRight size={12} />
+                        </div>
+                        
+                        {/* [여기!] 이미지가 표시될 영역 추가 */}
+                        <div className="w-40 h-40 mb-2 relative drop-shadow-2xl filter hover:brightness-110 transition-all">
+                            {btiImageSrc ? (
+                                <img 
+                                src={btiImageSrc} 
+                                alt={bti} 
+                                className="w-full h-full object-contain"
+                                />
+                            ) : (
+                                // 이미지가 없을 경우를 대비한 공백
+                                <div className="w-full h-full"></div>
+                            )}
+                        </div>
+                        
+                        <h1 className="text-5xl font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400 mb-2 drop-shadow-sm">
+                            {bti}
+                        </h1>
+                        
+                        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            {btiInfo.name}
+                        </h2>
+                        
+                        <p className="text-slate-300 text-sm leading-relaxed max-w-[90%] mb-6 line-clamp-3">
+                            {btiInfo.desc}
+                        </p>
 
-                      <div className="w-full pt-4 border-t border-white/10 mt-auto">
-                          <div className="flex justify-center gap-2">
-                              {btiInfo.tags && btiInfo.tags.slice(0, 2).map((tag, i) => (
-                                  <span key={i} className="text-[10px] bg-white/10 px-2 py-1 rounded text-blue-200">
-                                      #{tag}
-                                  </span>
-                              ))}
-                          </div>
-                      </div>
-                  </div>
-              </motion.div>
-          </div>
+                        <div className="w-full pt-4 border-t border-white/10 mt-auto">
+                            <div className="flex justify-center gap-2">
+                                {btiInfo.tags && btiInfo.tags.slice(0, 2).map((tag, i) => (
+                                    <span key={i} className="text-[10px] bg-white/10 px-2 py-1 rounded text-blue-200">
+                                        #{tag}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            </div>
 
           {/* [오른쪽] 상세 분석 (막대 그래프) */}
           <div className="flex flex-col h-full">
@@ -298,7 +326,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                   <div className="p-2 bg-red-50 text-red-500 rounded-lg">
                       <PlayCircle size={20} />
                   </div>
-                  <h3 className="font-bold text-slate-800 text-lg">닥터의 약점 처방 & 운동</h3>
+                  <h3 className="font-bold text-slate-800 text-lg">약점 처방 & 운동</h3>
               </div>
               <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-1 rounded">국민체력100 추천</span>
            </div>
@@ -397,7 +425,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
         </div>
       </motion.div>
 
-      {/* [통합 모달] 내 결과 & 유형 도감 */}
+{/* [통합 모달] 내 결과 & 유형 도감 */}
       <AnimatePresence>
         {showDetail && btiInfo && (
           <motion.div 
@@ -433,6 +461,16 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
                       <div className="text-center mb-6">
                          <span className="text-blue-500 font-bold tracking-widest text-xs uppercase mb-2 block">My RunBTI Code</span>
+                         
+                         {/* [추가 1] 내 결과 이미지 (모달 내부) */}
+                         <div className="w-32 h-32 mx-auto mb-4 relative filter drop-shadow-xl hover:scale-105 transition-transform">
+                             {btiImageSrc ? (
+                                 <img src={btiImageSrc} alt={bti} className="w-full h-full object-contain" />
+                             ) : (
+                                 <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-full text-4xl">🏃</div>
+                             )}
+                         </div>
+
                          <h2 className="text-4xl font-black text-slate-800 mb-1">{bti}</h2>
                          <span className="text-xl font-bold text-slate-500">{btiInfo.name}</span>
                       </div>
@@ -459,13 +497,28 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                       {!selectedType ? (
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
-                              {Object.entries(RUN_BTI_TYPES).map(([code, info]) => (
-                                  <div key={code} onClick={() => setSelectedType({ code, ...info })} className={`p-3 rounded-xl border cursor-pointer transition-all hover:scale-105 hover:shadow-md text-center flex flex-col justify-center min-h-[100px] ${code === bti ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-100' : 'bg-white border-slate-200 hover:border-blue-200'}`}>
-                                      <div className={`font-black text-lg mb-1 ${code === bti ? 'text-blue-600' : 'text-slate-700'}`}>{code}</div>
-                                      <div className="text-[10px] text-slate-500 line-clamp-2 leading-tight">{info.name}</div>
-                                      {code === bti && <div className="mt-2 text-[9px] bg-blue-100 text-blue-600 rounded px-1 py-0.5 inline-block w-fit mx-auto">나의 유형</div>}
-                                  </div>
-                              ))}
+                              {Object.entries(RUN_BTI_TYPES).map(([code, info]) => {
+                                  // [추가 2] 도감 리스트용 이미지 가져오기
+                                  const typeImg = getBtiImage(code);
+                                  
+                                  return (
+                                      <div key={code} onClick={() => setSelectedType({ code, ...info })} className={`p-3 rounded-xl border cursor-pointer transition-all hover:scale-105 hover:shadow-md text-center flex flex-col justify-center min-h-[140px] ${code === bti ? 'bg-blue-50 border-blue-300 ring-2 ring-blue-100' : 'bg-white border-slate-200 hover:border-blue-200'}`}>
+                                          
+                                          {/* 리스트 썸네일 이미지 */}
+                                          <div className="w-16 h-16 mx-auto mb-2">
+                                              {typeImg ? (
+                                                  <img src={typeImg} alt={code} className="w-full h-full object-contain opacity-90" />
+                                              ) : (
+                                                  <div className="w-full h-full bg-slate-100 rounded-full flex items-center justify-center text-xl">🏃</div>
+                                              )}
+                                          </div>
+
+                                          <div className={`font-black text-lg mb-1 ${code === bti ? 'text-blue-600' : 'text-slate-700'}`}>{code}</div>
+                                          <div className="text-[10px] text-slate-500 line-clamp-1 leading-tight">{info.name}</div>
+                                          {code === bti && <div className="mt-2 text-[9px] bg-blue-100 text-blue-600 rounded px-1 py-0.5 inline-block w-fit mx-auto">나의 유형</div>}
+                                      </div>
+                                  );
+                              })}
                           </div>
                       ) : (
                           <div className="space-y-6">
@@ -473,6 +526,16 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                                   <ChevronRight size={14} className="rotate-180"/> 목록으로 돌아가기
                               </button>
                               <div className="text-center">
+                                 {/* [추가 3] 도감 상세 보기 이미지 */}
+                                 <div className="w-48 h-48 mx-auto mb-6 relative">
+                                     <img 
+                                        src={getBtiImage(selectedType.code)} 
+                                        alt={selectedType.code} 
+                                        className="w-full h-full object-contain filter drop-shadow-md"
+                                        onError={(e) => e.target.style.display = 'none'}
+                                     />
+                                 </div>
+
                                  <h2 className="text-3xl font-black text-slate-800 mb-1">{selectedType.code}</h2>
                                  <span className="text-xl font-bold text-slate-500">{selectedType.name}</span>
                               </div>
