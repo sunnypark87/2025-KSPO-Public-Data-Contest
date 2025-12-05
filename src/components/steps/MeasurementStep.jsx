@@ -168,35 +168,46 @@ const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, 
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {status === 'idle' && (
+        {/* Case 1: Initial state, ready to start */}
+        {status === 'idle' && !isRunning && !isFinished && (
           <button onClick={start} className="col-span-2 py-4 bg-slate-900 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-800 transition-all active:scale-[0.98]">
             <Play size={20} fill="currentColor" /> 측정 시작
           </button>
         )}
 
-        {(status === 'running' || (isRunning && !isFinished)) && (
+        {/* Case 2: Timer is actively running */}
+        {isRunning && !isFinished && (
+          <button 
+             onClick={() => handleManualFinish(false)} 
+             className="col-span-2 py-3 bg-white border-2 border-red-100 text-red-500 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-red-50"
+          >
+            <XCircle size={20} /> <span className="text-xs mt-1">측정 종료</span>
+          </button>
+        )}
+        {/*
+        { Case 3: Timer is paused }
+        {!isRunning && !isFinished && status === 'idle' && (
           <>
              <div className="col-span-2 flex gap-2 mb-2">
-                <button onClick={isRunning ? pause : start} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200">
-                    {isRunning ? <><Pause size={20} /> 일시정지</> : <><Play size={20} /> 계속하기</>}
+                <button onClick={start} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200">
+                   <Play size={20} /> 계속하기
                 </button>
-             </div>
-             
-             <button 
-                onClick={() => handleManualFinish(false)} 
-                className={`${type === 'squat' ? '' : 'col-span-2'} py-3 bg-white border-2 border-red-100 text-red-500 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-red-50`}
-             >
-               <XCircle size={20} /> <span className="text-xs mt-1">실패/포기</span>
-             </button>
-
-             {type === 'squat' && (
-                <button onClick={() => handleManualFinish(true)} className="py-3 bg-blue-600 text-white rounded-xl font-bold flex flex-col items-center justify-center hover:bg-blue-700 shadow-lg shadow-blue-200">
-                  <CheckCircle size={20} /> <span className="text-xs mt-1">완료 (입력)</span>
+                <button 
+                    onClick={() => handleManualFinish(false)} 
+                    className="flex-1 py-3 bg-white border-2 border-red-100 text-red-500 rounded-xl font-bold flex flex-col items-center justify-center hover:bg-red-50"
+                >
+                    <XCircle size={20} /> <span className="text-xs mt-1">실패/포기</span>
                 </button>
-             )}
+                {type === 'squat' && (
+                    <button onClick={() => handleManualFinish(true)} className="flex-1 py-3 bg-blue-600 text-white rounded-xl font-bold flex flex-col items-center justify-center hover:bg-blue-700 shadow-lg shadow-blue-200">
+                      <CheckCircle size={20} /> <span className="text-xs mt-1">완료 (입력)</span>
+                    </button>
+                 )}
+            </div>
           </>
-        )}
+        )}*/}
 
+        {/* Case 4: Timer finished, or manually failed/succeeded, or input required */}
         {(status === 'success' || status === 'fail' || status === 'input_required') && (
            <button onClick={handleReset} className="col-span-2 py-3 text-slate-400 text-sm font-medium hover:text-slate-600 flex items-center justify-center gap-2 border border-slate-200 rounded-xl hover:bg-slate-50">
              <RotateCcw size={16} /> 재측정
@@ -232,7 +243,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
       <div className="px-1 text-center">
         <h2 className="text-2xl font-bold text-slate-800 mb-2">🏃 러닝 타입 테스트</h2>
         <p className="text-slate-500 text-sm leading-relaxed">
-          측정 중 <span className="text-red-500 font-bold">포기/실패</span> 버튼을 누르면<br/>
+          측정 중 <span className="text-red-500 font-bold">측정 종료</span> 버튼을 누르면<br/>
           현재까지의 기록이 자동으로 저장됩니다.
         </p>
       </div>
@@ -291,8 +302,21 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                     />
                     <button onClick={() => setShowSquatInput(false)} className="bg-blue-600 text-white px-6 rounded-xl font-bold whitespace-nowrap">확인</button>
                 </div>
-                {squatStandard && <p className="text-xs text-slate-400 mt-2">※ {userData.age}대 평균: 약 {squatStandard}회</p>}
+                {squatStandard && <p className="text-xs text-slate-400 mt-2">※ {userData.age}세 평균: 약 {squatStandard}회</p>}
              </motion.div>
+          ) : results.squat !== null ? (
+            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-lg text-center">
+                <div className="mb-4">
+                    <p className="text-sm text-slate-400 font-bold mb-1">측정 기록</p>
+                    <p className="text-5xl font-black text-blue-600 tracking-tight">{results.squat}<span className="text-2xl ml-1 text-slate-400 font-bold">회</span></p>
+                </div>
+                <button 
+                   onClick={() => setResults(prev => ({ ...prev, squat: null }))} 
+                   className="w-full py-3 text-slate-400 text-sm font-medium hover:text-slate-600 flex items-center justify-center gap-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                >
+                    <RotateCcw size={16} /> 재측정
+                </button>
+            </div>
           ) : (
              <LinearTimer 
                 title="스쿼트 타이머" 
