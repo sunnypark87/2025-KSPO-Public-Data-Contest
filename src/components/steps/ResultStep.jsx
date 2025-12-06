@@ -138,8 +138,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                 await navigator.share({
                     files: [file], 
                     title: `${SHARE_TITLE} 결과`,
-                    text: `나의 러닝 유형은 [${bti}] ${btiInfo.name}입니다.\n당신도 지금 바로 테스트해보세요! 👇`,
-                    url: SHARE_URL, 
+                    text: `나의 러닝 유형은 [${bti}] ${btiInfo.name}입니다.\n당신도 지금 바로 테스트해보세요! 👇\n${SHARE_URL}`,
                 });
                 return; // 공유 성공 시 종료
             }
