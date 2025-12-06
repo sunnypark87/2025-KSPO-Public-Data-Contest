@@ -176,6 +176,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
     try {
         if (!shareCardRef.current) throw new Error('이미지 영역 없음');
 
+        /*
         // 1. toPng로 확실한 이미지 데이터 생성 (배경색 지정 X = 투명 유지)
         const dataUrl = await toPng(shareCardRef.current, { 
             cacheBust: true, 
@@ -188,10 +189,22 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
         const blob = await res.blob();
 
         if (!blob) throw new Error('이미지 생성 실패');
+        */
+
+        const blobPromise = toBlob(shareCardRef.current, {
+            cacheBust: true,
+            pixelRatio: 2,
+            style: { transform: 'none' }
+        });
+
+        const safeBlobPromise = blobPromise.then((blob) => {
+            if (!blob) throw new Error('이미지 생성 실패');
+            return blob;
+        });
 
         // 3. 클립보드에 쓰기 (이미지만)
         if (navigator.clipboard && navigator.clipboard.write) {
-             const item = new ClipboardItem({ 'image/png': blob });
+             const item = new ClipboardItem({ 'image/png': safeBlobPromise });
              await navigator.clipboard.write([item]);
              
              alert('결과 이미지가 클립보드에 복사되었습니다!\n친구들에게 알려주고(Ctrl+V) 공유해보세요.');
