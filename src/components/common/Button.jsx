@@ -1,4 +1,4 @@
-export const Button = ({ children, disabled, onClick, variant = 'primary', className = '' }) => {
+export const Button = ({ children, disabled, onClick, variant = 'primary', className = '', ...props }) => {
   const baseStyle = "w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all active:scale-[0.98]";
   
   const variants = {
@@ -14,6 +14,7 @@ export const Button = ({ children, disabled, onClick, variant = 'primary', class
       disabled={disabled}
       onClick={onClick}
       className={`${baseStyle} ${currentStyle} ${className}`}
+      {...props}
     >
       {children}
     </button>

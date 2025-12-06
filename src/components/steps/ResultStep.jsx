@@ -71,6 +71,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
   const [selectedVideo, setSelectedVideo] = useState(null);
   
   const [isSharing, setIsSharing] = useState(false);
+  const [pregeneratedItem, setPregeneratedItem] = useState(null);
   const shareCardRef = useRef(null);
 
   // Kakao SDK 초기화
@@ -171,57 +172,72 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
     }
   };
 
-  // 내부용: PC 이미지 복사 함수 (toPng -> Blob 변환 방식)
-  const handleCopyImage = async () => {
-    try {
-        if (!shareCardRef.current) throw new Error('이미지 영역 없음');
-
-        /*
-        // 1. toPng로 확실한 이미지 데이터 생성 (배경색 지정 X = 투명 유지)
-        const dataUrl = await toPng(shareCardRef.current, { 
-            cacheBust: true, 
-            pixelRatio: 2, 
-            style: { transform: 'none' } // 애니메이션 변형 제거 (정사이즈 캡처)
-        });
-
-        // 2. Data URL을 Blob으로 변환
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-
-        if (!blob) throw new Error('이미지 생성 실패');
-        */
-
-        const blobPromise = toBlob(shareCardRef.current, {
+    // [추가] 사파리 호환성을 위한 이미지 프리패치 (마우스 호버 시 미리 생성)
+    const handlePrefetchImage = async () => {
+  
+      if (pregeneratedItem || isSharing || !shareCardRef.current) return;
+      
+      try {
+        const blob = await toBlob(shareCardRef.current, {
             cacheBust: true,
             pixelRatio: 2,
             style: { transform: 'none' }
         });
-
-        const safeBlobPromise = blobPromise.then((blob) => {
-            if (!blob) throw new Error('이미지 생성 실패');
-            return blob;
-        });
-
-        // 3. 클립보드에 쓰기 (이미지만)
-        if (navigator.clipboard && navigator.clipboard.write) {
-             const item = new ClipboardItem({ 'image/png': safeBlobPromise });
-             await navigator.clipboard.write([item]);
-             
-             alert('결과 이미지가 클립보드에 복사되었습니다!\n친구들에게 알려주고(Ctrl+V) 공유해보세요.');
-        } else {
-             throw new Error('이 브라우저는 클립보드 복사를 지원하지 않습니다.');
+        if (blob) {
+          // Safari는 ClipboardItem 생성이 비동기적으로 이루어질 때(onClick 내부 등) 막힐 수 있으므로 미리 생성
+          const item = new ClipboardItem({ 'image/png': blob });
+          setPregeneratedItem(item);
         }
+      } catch (e) {
+        console.warn("Prefetch failed:", e);
+      }
+    };
+  
+    // 내부용: PC 이미지 복사 함수 (toPng -> Blob 변환 방식)
+    const handleCopyImage = async () => {
+      try {
+          if (!shareCardRef.current) throw new Error('이미지 영역 없음');
+  
+          // Safari 최적화: 미리 생성된 ClipboardItem이 있으면 즉시 사용
+          if (pregeneratedItem) {
+               await navigator.clipboard.write([pregeneratedItem]);
+               alert('결과 이미지가 클립보드에 복사되었습니다!\n친구들에게 알려주고(Ctrl+V) 공유해보세요.');
+               return;
+          }
+  
+          // 일반 브라우저 또는 프리패치 데이터가 없는 경우: 즉시 생성 시도
+          const dataUrl = await toPng(shareCardRef.current, { 
+            cacheBust: true, 
+            pixelRatio: 2, 
+            style: { transform: 'none' } // 애니메이션 변형 제거 (정사이즈 캡처)
+          });
 
-    } catch (err) {
-        console.error("이미지 복사 실패:", err);
-        if (!window.isSecureContext) {
-             alert('클립보드 기능은 보안 환경(HTTPS/localhost)에서만 사용 가능합니다.');
-        } else {
-             alert(`이미지 복사 실패: ${err.message}`);
-        }
-    }
-  };
+          // 2. Data URL을 Blob으로 변환
+          const res = await fetch(dataUrl);
+          const blob = await res.blob();
 
+          if (!blob) throw new Error('이미지 생성 실패');
+          
+          // 3. 클립보드에 쓰기 (이미지만)
+          if (navigator.clipboard && navigator.clipboard.write) {
+               const item = new ClipboardItem({ 'image/png': blob });
+               await navigator.clipboard.write([item]);
+               
+               alert('결과 이미지가 클립보드에 복사되었습니다!\n친구들에게 알려주고(Ctrl+V) 공유해보세요.');
+          } else {
+               throw new Error('이 브라우저는 클립보드 복사를 지원하지 않습니다.');
+          }
+  
+      } catch (err) {
+          console.error("이미지 복사 실패:", err);
+          if (!window.isSecureContext) {
+               alert('클립보드 기능은 보안 환경(HTTPS/localhost)에서만 사용 가능합니다.');
+          }
+          else {
+               alert(`이미지 복사 실패: ${err.message}`);
+          }
+      }
+    };
   // 3. 카카오톡 공유 (기존 유지 - 예쁜 카드 보내기)
   const handleKakaoShare = async () => {
     if (!window.Kakao || !window.Kakao.isInitialized()) {
@@ -423,6 +439,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
           {/* 통합된 버튼: PC에서는 복사, 모바일에서는 공유 */}
           <Button
             variant="primary"
+            onMouseEnter={handlePrefetchImage}
             onClick={handleWebShare}
             disabled={isSharing}
             className="flex-1 h-11 rounded-xl bg-slate-900 text-white shadow-md hover:bg-slate-800 transition-colors whitespace-nowrap"
