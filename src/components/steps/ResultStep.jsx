@@ -12,13 +12,25 @@ const SHARE_URL = 'https://runner-type.me';
 const SHARE_TITLE = 'Runner-Type';
 
 // 이미지를 동적으로 불러오는 헬퍼 함수
+// const getBtiImage = (btiCode) => {
+//   try {
+//     return new URL(`../../assets/runbti/${btiCode}.png`, import.meta.url).href;
+//   } catch (e) {
+//     console.error("Image load failed", e);
+//     return null;
+//   }
+// };
+
+
+// [수정] Vite의 import.meta.glob을 사용하여 이미지를 확실하게 로드합니다.
+const btiImages = import.meta.glob('../../assets/runbti/*.png', { eager: true });
+
 const getBtiImage = (btiCode) => {
-  try {
-    return new URL(`../../assets/runbti/${btiCode}.png`, import.meta.url).href;
-  } catch (e) {
-    console.error("Image load failed", e);
-    return null;
-  }
+  const path = `../../assets/runbti/${btiCode}.png`;
+  const imageModule = btiImages[path];
+  
+  // 모듈이 로드되면 default 속성에 이미지 경로가 들어있습니다.
+  return imageModule?.default || imageModule || null;
 };
 
 // 능력치 막대 그래프 컴포넌트
@@ -124,8 +136,10 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
             
             if (navigator.canShare({ files: [file] })) {
                 await navigator.share({
-                    files: [file], // 텍스트 없이 이미지만 공유 (깔끔하게)
+                    files: [file], 
                     title: `${SHARE_TITLE} 결과`,
+                    text: `나의 러닝 유형은 [${bti}] ${btiInfo.name}입니다.\n당신도 지금 바로 테스트해보세요! 👇`,
+                    url: SHARE_URL, 
                 });
                 return; // 공유 성공 시 종료
             }
@@ -263,6 +277,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                                 <img 
                                 src={btiImageSrc} 
                                 alt={bti} 
+                                crossOrigin="anonymous"
                                 className="w-full h-full object-contain"
                                 />
                             ) : (
