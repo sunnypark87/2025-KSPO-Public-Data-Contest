@@ -96,6 +96,16 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
   } = analysisResult;
 
   const btiImageSrc = getBtiImage(bti);
+
+    // [추가] 이미지 프리로딩: 공유 시 이미지가 빈 화면으로 나오는 것을 방지합니다.
+    useEffect(() => {
+        if (btiImageSrc) {
+            const img = new Image();
+            img.src = btiImageSrc;
+            // 필요하다면 모든 유형의 이미지를 미리 로드할 수도 있습니다.
+            // Object.values(btiImages).forEach(mod => new Image().src = mod.default || mod);
+        }
+    }, [btiImageSrc]);
       
   const getThumbnail = (url) => {
       if (!url) return ''; 
@@ -138,7 +148,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                 await navigator.share({
                     files: [file], 
                     title: `${SHARE_TITLE} 결과`,
-                    text: `나의 러닝 유형은 [${bti}] ${btiInfo.name}입니다.\n당신도 지금 바로 테스트해보세요! 👇\n${SHARE_URL}`,
+                    text: `나의 러닝 유형은 [${bti}] ${btiInfo.name}입니다.\n당신도 지금 바로 테스트해보세요! 👇\n${SHARE_URL}`
                 });
                 return; // 공유 성공 시 종료
             }
