@@ -3,9 +3,10 @@ import { AnimatePresence } from 'framer-motion';
 import { ProfileStep } from './components/steps/ProfileStep';
 import { MeasurementStep } from './components/steps/MeasurementStep';
 import { ResultStep } from './components/steps/ResultStep';
+import LandingStep from './components/steps/LandingStep';
 
 function App() {
-  const [currentStep, setCurrentStep] = useState('profile');
+  const [currentStep, setCurrentStep] = useState('landing');
   const [userData, setUserData] = useState(null);
   const [measurements, setMeasurements] = useState(null);
 
@@ -54,6 +55,9 @@ function App() {
         {/* Content */}
         <div className="flex-1 flex flex-col justify-center">
           <AnimatePresence mode='wait'>
+            {currentStep === 'landing' && (
+              <LandingStep key="landing" onNext={() => setCurrentStep('profile')}  />
+            )}
             {currentStep === 'profile' && (
               <ProfileStep key="profile" onNext={handleProfileSubmit} />
             )}
