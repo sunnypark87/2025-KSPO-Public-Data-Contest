@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Timer, Activity, Ruler, CheckCircle2, Play, Pause, RotateCcw, XCircle, CheckCircle, Volume2, Info, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Volume2, Play, RotateCcw, XCircle, CheckCircle2, Ruler, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card } from '../common/Card';
 import { Button } from '../common/Button';
 import { FlexibilityAnimation } from '../visual/FlexibilityAnimation';
@@ -11,7 +11,7 @@ import { getStandard } from '../../constants/standards';
 import wallSitPic from '../../constants/wall-sit-pic.png';
 
 // ----------------------------------------------------------------------
-// [수정된 타이머 컴포넌트] : 가이드 토글 제거 (항상 보임)
+// [타이머 컴포넌트]
 // ----------------------------------------------------------------------
 const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, userAge, userGender, guideUrl, precautions }) => {
   const { timeMs, progress, isRunning, isFinished, start, pause, reset } = useExerciseTimer(duration, bpm);
@@ -183,7 +183,7 @@ const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, 
 // [메인 컴포넌트]
 // ----------------------------------------------------------------------
 export const MeasurementStep = ({ userData, onSubmit }) => {
-  const [currentStep, setCurrentStep] = useState(0); // 현재 단계 (0 ~ 4)
+  const [currentStep, setCurrentStep] = useState(0); 
   const [results, setResults] = useState({
     plank: null,   
     wallSit: null, 
@@ -192,7 +192,9 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
     flexibility: 0, 
   });
   
+  // [수정] 스쿼트 입력을 위한 임시 상태 추가
   const [showSquatInput, setShowSquatInput] = useState(false);
+  const [squatInput, setSquatInput] = useState(''); // 입력값 임시 저장용
 
   // 각 테스트별 설정 데이터
   const TEST_STEPS = [
@@ -240,7 +242,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
     {
         id: 'flexibility',
         title: '유연성 (전굴)',
-        type: 'manual' // 타이머가 아닌 수동 입력
+        type: 'manual' 
     }
   ];
 
@@ -250,8 +252,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
   // 현재 단계 완료 여부 확인 (다음 버튼 활성화용)
   const isCurrentStepComplete = () => {
     const val = results[currentTestConfig.id];
-    // 유연성은 0일 수도 있으므로 null과 undefined만 체크, 스쿼트는 별도 로직
-    if (currentTestConfig.id === 'flexibility') return true; // 유연성은 기본값이 0이므로 항상 통과 가능 (또는 사용자가 조절)
+    if (currentTestConfig.id === 'flexibility') return true; 
     return val !== null;
   };
 
@@ -260,7 +261,6 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
         setCurrentStep(prev => prev + 1);
         window.scrollTo(0, 0);
     } else {
-        // 마지막 단계면 제출
         onSubmit(results);
     }
   };
@@ -272,16 +272,27 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
     }
   };
 
-  // 기준값 가져오기 (Progress Title용)
   const getStepStandard = (type) => {
     return getStandard(type, userData.age, userData.gender);
   };
 
-  // 스쿼트 입력 핸들러
-  const handleSquatResult = (val) => {
+  // 스쿼트 타이머 종료 시 호출
+  const handleSquatTimerEnd = (val) => {
     if(val === 'INPUT_REQUIRED' || val >= 60000) {
         setShowSquatInput(true);
     }
+  };
+
+  // [수정] 스쿼트 입력 완료 처리 (입력 완료 버튼 클릭 시 실행)
+  const confirmSquatInput = () => {
+    const val = parseInt(squatInput);
+    // 빈 값이거나 음수면 처리 안 함 (간단 유효성 검사)
+    if (isNaN(val) || val < 0) {
+        alert("올바른 횟수를 입력해주세요.");
+        return;
+    }
+    setResults(prev => ({ ...prev, squat: val }));
+    setShowSquatInput(false);
   };
 
   return (
@@ -304,7 +315,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
         </div>
       </div>
 
-      {/* 메인 콘텐츠 영역 (단계별 렌더링) */}
+      {/* 메인 콘텐츠 영역 */}
       <div className="flex-1">
         <AnimatePresence mode='wait'>
             <motion.div
@@ -315,29 +326,33 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                 transition={{ duration: 0.2 }}
                 className="h-full"
             >
-                {/* 1~4. 타이머 기반 테스트 (플랭크, 월시트, 스쿼트, 제자리뛰기) */}
+                {/* 1~4. 타이머 기반 테스트 */}
                 {currentTestConfig.id !== 'flexibility' && (
                     <div className="h-full">
-                        {/* 스쿼트 입력창 예외 처리 */}
+                        {/* 스쿼트 입력창 화면 */}
                         {currentTestConfig.id === 'squat' && showSquatInput ? (
                              <div className="bg-white p-6 rounded-2xl border border-blue-200 shadow-lg h-full flex flex-col justify-center">
                                 <h3 className="text-xl font-bold text-center mb-6">스쿼트 횟수 입력</h3>
                                 <label className="block text-sm font-bold text-slate-700 mb-2">60초 동안 수행한 횟수는?</label>
-                                <div className="flex gap-2 mb-4">
+                                
+                                {/* [수정] 사파리 대응: flex 대신 grid 사용으로 레이아웃 안정화 */}
+                                <div className="grid grid-cols-[1fr_auto] gap-2 mb-4 w-full">
                                     <input 
                                         type="number" 
                                         placeholder="0" 
-                                        className="flex-1 p-4 border border-slate-300 rounded-xl text-2xl font-bold outline-blue-500 text-center"
-                                        onChange={(e) => setResults(prev => ({ ...prev, squat: parseInt(e.target.value) || 0 }))}
+                                        value={squatInput}
+                                        className="w-full p-4 border border-slate-300 rounded-xl text-2xl font-bold outline-blue-500 text-center min-w-0"
+                                        onChange={(e) => setSquatInput(e.target.value)}
                                     />
+                                    <button 
+                                        onClick={confirmSquatInput}
+                                        className="bg-blue-600 text-white px-6 rounded-xl font-bold whitespace-nowrap hover:bg-blue-700 transition-colors"
+                                    >
+                                        입력 완료
+                                    </button>
                                 </div>
-                                <button 
-                                    onClick={() => setShowSquatInput(false)} 
-                                    className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold text-lg hover:bg-blue-700"
-                                >
-                                    입력 완료
-                                </button>
-                                {getStepStandard('squat') && <p className="text-xs text-slate-400 mt-4 text-center">※ {userData.age}세 평균: 약 {getStepStandard('squat')}회</p>}
+
+                                {getStepStandard('squat') && <p className="text-xs text-slate-400 mt-2 text-center">※ {userData.age}세 평균: 약 {getStepStandard('squat')}회</p>}
                              </div>
                         ) : currentTestConfig.id === 'squat' && results.squat !== null ? (
                             // 스쿼트 완료 후 결과 표시 화면
@@ -349,6 +364,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                                 <button 
                                    onClick={() => {
                                        setResults(prev => ({ ...prev, squat: null }));
+                                       setSquatInput(''); // 초기화
                                        setShowSquatInput(false);
                                    }} 
                                    className="py-3 px-6 text-slate-500 font-medium hover:text-slate-700 flex items-center justify-center gap-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
@@ -357,7 +373,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                                 </button>
                             </div>
                         ) : (
-                            // 일반 타이머 컴포넌트 렌더링
+                            // 일반 타이머 렌더링
                             <LinearTimer
                                 type={currentTestConfig.id}
                                 title={currentTestConfig.title}
@@ -369,7 +385,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                                 guideUrl={currentTestConfig.guideUrl}
                                 precautions={currentTestConfig.precautions}
                                 onResult={(val) => {
-                                    if (currentTestConfig.id === 'squat') handleSquatResult(val);
+                                    if (currentTestConfig.id === 'squat') handleSquatTimerEnd(val);
                                     else setResults(prev => ({ ...prev, [currentTestConfig.id]: val }));
                                 }}
                             />
