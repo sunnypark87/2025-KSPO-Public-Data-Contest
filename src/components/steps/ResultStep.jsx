@@ -5,7 +5,9 @@ import { toBlob, toPng } from 'html-to-image';
 import { Share2, RefreshCw, AlertTriangle, CheckCircle, Info, Activity, Zap, Shield, Move, X, ChevronRight, PlayCircle, Grid, User, MessageCircle } from 'lucide-react';
 import { Button } from '../common/Button';
 import { analyzeRunBTI, RUN_BTI_TYPES } from '../../utils/runBtiLogic'; 
+import { addFitnessRecord } from '../../utils/firestoreService';
 import { getRecommendedExercises } from '../../data/exerciseDatabase';
+
 
 // [공통 상수] 공유 정보
 const SHARE_URL = 'https://runner-type.me';
@@ -79,9 +81,8 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
     if (window.Kakao && !window.Kakao.isInitialized()) {
         try {
             window.Kakao.init(import.meta.env.VITE_KAKAO_API_KEY); 
-            console.log("Kakao SDK Initialized");
         } catch (e) {
-            console.error("Kakao SDK Init Failed:", e);
+            
         }
     }
   }, []);
@@ -126,6 +127,38 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
       setActiveTab('MY_RESULT');
       setSelectedType(null);
   };
+
+  const hasSaved = useRef(false);
+
+  useEffect(() => {
+    if (userData && bti && !hasSaved.current) {
+      hasSaved.current = true;
+      const recordToSave = {
+        profile: {
+          age: userData.age,
+          gender: userData.gender
+        },
+        measurements: {
+          plank: measurements.plank,
+          wallSit: measurements.wallSit,
+          squat: measurements.squat,
+          hopping: measurements.hopping,
+          flexibility: measurements.flexibility
+        },
+        result: {
+          type: bti,
+          typeName: btiInfo.name,
+          scores: {
+              power: chartScores.power,
+              core: chartScores.core,
+              flexibility: chartScores.flexibility,
+              agility: chartScores.agility
+          }
+        }
+      }
+      addFitnessRecord(recordToSave);
+    }
+  }, [userData, measurements, bti, btiInfo, chartScores]);
 
   // [핵심] 통합 공유 핸들러 ('결과 공유하기' 버튼 클릭 시 실행)
   const handleWebShare = async () => {
