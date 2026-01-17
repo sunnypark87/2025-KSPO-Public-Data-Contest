@@ -1,5 +1,3 @@
-import { getStandard } from '../constants/standards';
-
 // RunBTI 16가지 전체 유형 데이터베이스 (기존 내용 유지)
 export const RUN_BTI_TYPES = {
   'ESFA': { name: '육각형 마라토너', desc: '지구력, 코어, 유연성, 순발력 모든 것이 완벽한 러너입니다.', tags: ['완벽밸런스', '풀코스추천'], feature: '신체 밸런스가 매우 뛰어납니다. 장거리 주행에도 자세가 무너지지 않으며, 부상 위험도 가장 적은 이상적인 상태입니다.', runningGuide: '현재 상태를 유지하며 풀코스 마라톤이나 트레일 러닝 등 고강도 챌린지에 도전해보세요.' },
@@ -22,48 +20,136 @@ export const RUN_BTI_TYPES = {
 
 export const analyzeRunBTI = (results, age) => {
   const { plank, wallSit, squat, hopping, flexibility } = results;
-  
-  const stdPlank = getStandard('plank', age) || 60;
-  const stdWallSit = getStandard('wallSit', age) || 60;
-  const stdSquat = getStandard('squat', age) || 30;
-  const stdFlex = getStandard('flexibility', age) || 0;
-  
-  const engineScore = (wallSit / 1000) / stdWallSit; 
-  const powerScore = squat / stdSquat; 
-  const type1 = engineScore >= powerScore ? 'E' : 'P';
-  
-  const coreScore = Math.min((plank / 1000) / stdPlank, 1.5);
-  const type2 = (plank / 1000) >= stdPlank ? 'S' : 'W';
-  
-  const flexScore = stdFlex === 0 ? 1 : Math.max(0, (flexibility + 10) / (stdFlex + 10)); 
-  const type3 = flexibility >= stdFlex ? 'F' : 'R';
-  
-  const agilityScore = hopping >= 60000 ? 1.2 : (hopping / 60000);
-  const type4 = hopping >= 60000 ? 'A' : 'B';
-  
-  const bti = `${type1}${type2}${type3}${type4}`; 
-  
+
+  const AGE_NORMS = [
+    {
+      min: 0,
+      max: 29,
+      norms: {
+        plank: { mean: 55, sd: 18 },       // seconds
+        wallSit: { mean: 60, sd: 20 },     // seconds
+        squat: { mean: 32, sd: 9 },        // reps in 60s
+        hopping: { mean: 55, sd: 12 },     // seconds
+        flexibility: { mean: 4, sd: 8 }    // cm
+      }
+    },
+    {
+      min: 30,
+      max: 39,
+      norms: {
+        plank: { mean: 50, sd: 17 },
+        wallSit: { mean: 55, sd: 19 },
+        squat: { mean: 30, sd: 9 },
+        hopping: { mean: 50, sd: 12 },
+        flexibility: { mean: 3, sd: 8 }
+      }
+    },
+    {
+      min: 40,
+      max: 49,
+      norms: {
+        plank: { mean: 45, sd: 16 },
+        wallSit: { mean: 50, sd: 18 },
+        squat: { mean: 27, sd: 8 },
+        hopping: { mean: 45, sd: 11 },
+        flexibility: { mean: 2, sd: 7 }
+      }
+    },
+    {
+      min: 50,
+      max: Infinity,
+      norms: {
+        plank: { mean: 40, sd: 15 },
+        wallSit: { mean: 45, sd: 17 },
+        squat: { mean: 24, sd: 8 },
+        hopping: { mean: 40, sd: 10 },
+        flexibility: { mean: 1, sd: 7 }
+      }
+    }
+  ];
+
+  const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
+
+  const erf = (x) => {
+    const sign = x < 0 ? -1 : 1;
+    const absX = Math.abs(x);
+    const t = 1 / (1 + 0.3275911 * absX);
+    const a1 = 0.254829592;
+    const a2 = -0.284496736;
+    const a3 = 1.421413741;
+    const a4 = -1.453152027;
+    const a5 = 1.061405429;
+    const poly = (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t;
+    const y = 1 - poly * Math.exp(-absX * absX);
+    return sign * y;
+  };
+
+  const percentileFromValue = (value, mean, sd) => {
+    if (!Number.isFinite(value) || !Number.isFinite(mean) || !Number.isFinite(sd) || sd <= 0) {
+      return 0;
+    }
+    const z = (value - mean) / sd;
+    const cdf = 0.5 * (1 + erf(z / Math.SQRT2));
+    return clamp(cdf * 100, 0, 100);
+  };
+
+  const safeNumber = (val, fallback = 0) => (Number.isFinite(val) ? val : fallback);
+
+  const norms = AGE_NORMS.find((group) => age >= group.min && age <= group.max)?.norms ?? AGE_NORMS[0].norms;
+
+  const plankSec = safeNumber(plank) / 1000;
+  const wallSitSec = safeNumber(wallSit) / 1000;
+  const hoppingSec = safeNumber(hopping) / 1000;
+  const squatCount = safeNumber(squat);
+  const flexibilityCm = safeNumber(flexibility);
+
+  const measurementScores = {
+    plank: percentileFromValue(plankSec, norms.plank.mean, norms.plank.sd),
+    wallSit: percentileFromValue(wallSitSec, norms.wallSit.mean, norms.wallSit.sd),
+    squat: percentileFromValue(squatCount, norms.squat.mean, norms.squat.sd),
+    hopping: percentileFromValue(hoppingSec, norms.hopping.mean, norms.hopping.sd),
+    flexibility: percentileFromValue(flexibilityCm, norms.flexibility.mean, norms.flexibility.sd)
+  };
+
+  const average = (values) => {
+    const total = values.reduce((sum, val) => sum + val, 0);
+    return values.length ? total / values.length : 0;
+  };
+
+  const skillScores = {
+    power: average([measurementScores.squat, measurementScores.hopping]),
+    core: average([measurementScores.plank, measurementScores.wallSit]),
+    flexibility: measurementScores.flexibility,
+    agility: measurementScores.hopping
+  };
+
+  const type1 = skillScores.power > 50 ? 'P' : 'E';
+  const type2 = skillScores.core > 50 ? 'S' : 'W';
+  const type3 = skillScores.flexibility > 50 ? 'F' : 'R';
+  const type4 = skillScores.agility > 50 ? 'A' : 'B';
+
+  const bti = `${type1}${type2}${type3}${type4}`;
+
   const typeInfo = RUN_BTI_TYPES[bti] || {
-      ...RUN_BTI_TYPES['EWRB'],
-      name: `미지의 러너 ${bti}`,
-      desc: '독특한 신체 밸런스를 가졌습니다. 균형 잡힌 훈련이 필요합니다.'
+    ...RUN_BTI_TYPES['EWRB'],
+    name: `미지의 러너 ${bti}`,
+    desc: '독특한 신체 밸런스를 가졌습니다. 균형 잡힌 훈련이 필요합니다.'
   };
 
   return {
     bti,
     result: typeInfo,
     chartScores: {
-        engine: Math.min(engineScore * 50, 100),   
-        power: Math.min(powerScore * 50, 100),      
-        core: Math.min(coreScore * 50, 100),
-        flexibility: Math.min(flexScore * 50, 100),
-        agility: Math.min(agilityScore * 50, 100)
+      power: skillScores.power,
+      core: skillScores.core,
+      flexibility: skillScores.flexibility,
+      agility: skillScores.agility
     },
     scores: {
-        engine: type1 === 'E' ? '지구력형' : '파워형',
-        chassis: type2 === 'S' ? '안정적' : '보강필요',
-        suspension: type3 === 'F' ? '유연함' : '뻣뻣함',
-        gear: type4 === 'A' ? '경쾌함' : '노력필요'
+      power: type1 === 'P' ? '파워형' : '지구력형',
+      core: type2 === 'S' ? '안정적' : '보강필요',
+      flexibility: type3 === 'F' ? '유연함' : '뻣뻣함',
+      agility: type4 === 'A' ? '경쾌함' : '노력필요'
     },
     prescription: generatePrescription(type1, type2, type3, type4)
   };
