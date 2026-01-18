@@ -13,8 +13,8 @@ import wallSitPic from '../../constants/wall-sit-pic.png';
 // ----------------------------------------------------------------------
 // [타이머 컴포넌트]
 // ----------------------------------------------------------------------
-const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, userAge, userGender, guideUrl, precautions }) => {
-  const { timeMs, progress, isRunning, isFinished, start, pause, reset } = useExerciseTimer(duration, bpm);
+const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, userAge, userGender, guideUrl, precautions, allowOvertime = false }) => {
+  const { timeMs, progress, isRunning, isFinished, start, pause, reset } = useExerciseTimer(duration, bpm, allowOvertime);
   const [status, setStatus] = useState('idle'); 
   
   // 기준값 가져오기
@@ -43,6 +43,8 @@ const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, 
     const d = Math.floor((ms % 1000) / 100);
     return `${m}:${s.toString().padStart(2, '0')}.${d}`;
   };
+
+  const showAverageReachedMessage = allowOvertime && timeMs >= duration * 1000;
 
   const handleManualFinish = (isSuccess) => {
     pause(); 
@@ -134,10 +136,18 @@ const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, 
            <span className="text-5xl font-mono font-black text-slate-800 tracking-wider tabular-nums">
              {formatTime(timeMs)}
            </span>
-           <div className="text-right">
-             <span className="text-xs font-bold text-slate-400 block">제한시간: {duration}초</span>
-             <span className="text-xs text-blue-600 font-bold">{getGoalText()}</span>
-           </div>
+           {!showAverageReachedMessage && (
+             <div className="text-right">
+               <span className="text-xs font-bold text-slate-400 block">제한시간: {duration}초</span>
+               <span className="text-xs text-blue-600 font-bold">{getGoalText()}</span>
+             </div>
+            )}
+            {showAverageReachedMessage && (
+              <div className="text-right">
+               <span className="text-xs font-bold text-emerald-600 block">평균 도달 성공!</span>
+               <span className="text-xs text-plate-600 font-bold">한계에 도전하세요</span>
+             </div>
+            )}
         </div>
         
         <div className="h-4 bg-slate-100 rounded-full overflow-hidden relative">
@@ -378,8 +388,9 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                                 type={currentTestConfig.id}
                                 title={currentTestConfig.title}
                                 subTitle={`목표: ${getStepStandard(currentTestConfig.id) || 60}${currentTestConfig.id === 'squat' ? '회' : '초'}`}
-                                duration={getStandard(currentTestConfig.id, userData.age, userData.gender) || 60}
+                                duration={currentTestConfig.id === 'squat' ? 60 : (getStandard(currentTestConfig.id, userData.age, userData.gender) || 60)}
                                 bpm={currentTestConfig.bpm || 0}
+                                allowOvertime={['plank', 'wallSit', 'hopping'].includes(currentTestConfig.id)}
                                 userAge={userData.age}
                                 userGender={userData.gender}
                                 guideUrl={currentTestConfig.guideUrl}

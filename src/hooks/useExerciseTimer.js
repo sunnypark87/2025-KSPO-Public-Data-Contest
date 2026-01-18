@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 
-export const useExerciseTimer = (duration = 60, bpm = 0) => {
+export const useExerciseTimer = (duration = 60, bpm = 0, allowOvertime = false) => {
   // [UI 렌더링용 상태]
   const [timeMs, setTimeMs] = useState(0);
   const [isRunning, setIsRunning] = useState(false); 
@@ -57,7 +57,7 @@ export const useExerciseTimer = (duration = 60, bpm = 0) => {
         }
     }
 
-    if (elapsed >= totalMs) {
+    if (!allowOvertime && elapsed >= totalMs) {
       setTimeMs(totalMs);
       setIsFinished(true);
       
@@ -67,10 +67,10 @@ export const useExerciseTimer = (duration = 60, bpm = 0) => {
       
       if (audioContextRef.current) audioContextRef.current.suspend();
     } else {
-      setTimeMs(elapsed);
+      setTimeMs(allowOvertime ? elapsed : Math.min(elapsed, totalMs));
       rafRef.current = requestAnimationFrame(animate);
     }
-  }, [totalMs, bpm, scheduleBeep]); // isRunning 의존성 제거
+  }, [totalMs, bpm, allowOvertime, scheduleBeep]); // isRunning 의존성 제거
 
   const start = useCallback(() => {
     // 이미 실행 중이면 무시 (Ref로 확인하여 더 확실하게 차단)
