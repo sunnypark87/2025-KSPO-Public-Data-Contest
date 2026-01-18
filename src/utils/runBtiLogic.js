@@ -18,7 +18,7 @@ export const RUN_BTI_TYPES = {
   'PWRB': { name: '유리대포', desc: '한방(파워)은 있지만 내구성이 약해 쉽게 다칠 수 있는 타입입니다.', tags: ['파워', '전신보강'], feature: '순간적인 힘은 좋으나 이를 뒷받침할 코어, 유연성, 리듬감이 부족합니다.', runningGuide: '고강도 러닝은 자제하고 걷기부터 시작해 기초 근력을 키우세요.' }
 };
 
-export const analyzeRunBTI = (results, age) => {
+export const analyzeRunBTI = (results, age, gender) => {
   const { plank, wallSit, squat, hopping, flexibility } = results;
 
   const AGE_NORMS = [

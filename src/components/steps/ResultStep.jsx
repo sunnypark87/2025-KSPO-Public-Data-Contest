@@ -88,7 +88,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
   }, []);
 
   // 데이터 분석
-  const analysisResult = analyzeRunBTI(measurements || {}, userData?.age) || {};
+  const analysisResult = analyzeRunBTI(measurements || {}, userData?.age, userData?.gender) || {};
   
   const { 
     bti = '----', 
