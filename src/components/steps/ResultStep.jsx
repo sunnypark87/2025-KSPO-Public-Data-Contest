@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 // [필수] PC 호환성을 위해 toPng 추가
 import { toBlob, toPng } from 'html-to-image';
-import { Share2, RefreshCw, AlertTriangle, CheckCircle, Info, Activity, Zap, Shield, Move, X, ChevronRight, PlayCircle, Grid, User, MessageCircle } from 'lucide-react';
+import { Share2, RefreshCw, AlertTriangle, CheckCircle, Info, Activity, Zap, Shield, Move, X, ChevronRight, PlayCircle, Grid, User, MessageCircle, Clock } from 'lucide-react';
 import { Button } from '../common/Button';
 import { analyzeRunBTI, RUN_BTI_TYPES } from '../../utils/runBtiLogic'; 
 import { addFitnessRecord } from '../../utils/firestoreService';
@@ -12,17 +12,6 @@ import { getRecommendedExercises } from '../../data/exerciseDatabase';
 // [공통 상수] 공유 정보
 const SHARE_URL = 'https://runner-type.me';
 const SHARE_TITLE = 'Runner-Type';
-
-// 이미지를 동적으로 불러오는 헬퍼 함수
-// const getBtiImage = (btiCode) => {
-//   try {
-//     return new URL(`../../assets/runbti/${btiCode}.png`, import.meta.url).href;
-//   } catch (e) {
-//     console.error("Image load failed", e);
-//     return null;
-//   }
-// };
-
 
 // [수정] Vite의 import.meta.glob을 사용하여 이미지를 확실하게 로드합니다.
 const btiImages = import.meta.glob('../../assets/runbti/*.png', { eager: true });
@@ -35,6 +24,16 @@ const getBtiImage = (btiCode) => {
   return imageModule?.default || imageModule || null;
 };
 
+// [신규] 신체 나이 아이템 컴포넌트
+const PhysicalAgeItem = ({ label, value, colorClass }) => (
+    <div className="flex flex-col items-center flex-1">
+        <span className="text-[11px] text-slate-400 font-medium mb-1">{label}</span>
+        <span className={`text-lg font-black ${value ? colorClass : 'text-slate-300'}`}>
+            {value || '-'}
+        </span>
+    </div>
+);
+
 // 능력치 막대 그래프 컴포넌트
 const AbilityBar = ({ label, score, icon, colorClass, bgClass, barColor }) => {
     const safeScore = (score && !isNaN(score)) ? Math.round(score) : 0;
@@ -46,8 +45,8 @@ const AbilityBar = ({ label, score, icon, colorClass, bgClass, barColor }) => {
     else if (safeScore >= 20) status = '보통';
 
     return (
-        <div className="mb-5">
-            <div className="flex justify-between items-center mb-2">
+        <div className="mb-4 last:mb-0">
+            <div className="flex justify-between items-center mb-1.5">
                 <div className="flex items-center gap-2 text-slate-700 font-bold text-sm">
                     <div className={`p-1.5 rounded-lg ${bgClass} ${colorClass}`}>
                         {icon}
@@ -59,7 +58,7 @@ const AbilityBar = ({ label, score, icon, colorClass, bgClass, barColor }) => {
                     <span className="text-[10px] text-slate-400 ml-1">/ {status}</span>
                 </div>
             </div>
-            <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+            <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${safeScore}%` }} transition={{ duration: 1.2, ease: "easeOut" }} className={`h-full rounded-full ${barColor}`} />
             </div>
         </div>
@@ -82,7 +81,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
         try {
             window.Kakao.init(import.meta.env.VITE_KAKAO_API_KEY); 
         } catch (e) {
-            
+            console.error("Kakao Init Failed", e);
         }
     }
   }, []);
@@ -94,7 +93,8 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
     bti = '----', 
     result: btiInfo = { name: '분석 중...', desc: '데이터를 분석하고 있습니다.', tags: [] }, 
     chartScores = { power: 0, core: 0, flexibility: 0, agility: 0 }, 
-    prescription = [] 
+    prescription = [],
+    physicalAge = { power: '-', core: '-', flexibility: '-' } // [추가] 신체 나이 데이터 Destructuring
   } = analysisResult;
 
   const btiImageSrc = getBtiImage(bti);
@@ -104,8 +104,6 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
         if (btiImageSrc) {
             const img = new Image();
             img.src = btiImageSrc;
-            // 필요하다면 모든 유형의 이미지를 미리 로드할 수도 있습니다.
-            // Object.values(btiImages).forEach(mod => new Image().src = mod.default || mod);
         }
     }, [btiImageSrc]);
       
@@ -381,20 +379,41 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                 </motion.div>
             </div>
 
-          {/* [오른쪽] 상세 분석 (막대 그래프) */}
+          {/* [오른쪽] 상세 분석 & 신체 나이 */}
           <div className="flex flex-col h-full">
               <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-center h-full min-h-[340px]">
-                   <div className="mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
-                       <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                           <Activity size={20} />
-                       </div>
-                       <div>
-                           <h3 className="text-lg font-bold text-slate-800">신체 능력 상세 분석</h3>
-                           <span className="text-[11px] text-slate-400">평균(50점) 기준 상대 평가</span>
+                   
+                   {/* 1. 섹션 헤더 */}
+                   <div className="mb-5 flex items-center justify-between border-b border-slate-100 pb-3">
+                       <div className="flex items-center gap-2">
+                            <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                                <Activity size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-800">신체 능력 상세</h3>
+                            </div>
                        </div>
                    </div>
+
+                   {/* [추가] 2. 신체 나이 뱃지 (Physical Age) */}
+                   <div className="mb-6 bg-slate-50 rounded-2xl p-4 border border-slate-100 relative overflow-hidden">
+                       <div className="flex items-center gap-1.5 text-xs font-bold text-slate-500 mb-3 z-10 relative">
+                           <Clock size={14} className="text-blue-500"/> 
+                           나의 신체 나이(추정)
+                       </div>
+                       <div className="flex justify-between items-center text-center relative z-10 px-2">
+                           <PhysicalAgeItem label="하체 파워" value={physicalAge?.power} colorClass="text-blue-600" />
+                           <div className="w-px h-8 bg-slate-200"></div>
+                           <PhysicalAgeItem label="코어 근력" value={physicalAge?.core} colorClass="text-green-600" />
+                           <div className="w-px h-8 bg-slate-200"></div>
+                           <PhysicalAgeItem label="유연성" value={physicalAge?.flexibility} colorClass="text-purple-600" />
+                       </div>
+                       {/* 배경 데코레이션 */}
+                       <div className="absolute top-0 right-0 w-16 h-16 bg-blue-100/50 rounded-full blur-xl -translate-y-1/2 translate-x-1/2"></div>
+                   </div>
                    
-                   <div className="space-y-2">
+                   {/* 3. 상세 능력치 막대 그래프 */}
+                   <div className="space-y-1">
                         <AbilityBar label="POWER (힘)" score={chartScores?.power || 0} icon={<Zap size={14}/>} colorClass="text-red-500" bgClass="bg-red-50" barColor="bg-red-500" />
                         <AbilityBar label="CORE (코어)" score={chartScores?.core || 0} icon={<Shield size={14}/>} colorClass="text-blue-500" bgClass="bg-blue-50" barColor="bg-blue-500" />
                         <AbilityBar label="FLEXIBLE (유연성)" score={chartScores?.flexibility || 0} icon={<Move size={14}/>} colorClass="text-purple-500" bgClass="bg-purple-50" barColor="bg-purple-500" />
