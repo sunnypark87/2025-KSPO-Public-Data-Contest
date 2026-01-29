@@ -98,59 +98,113 @@ const getAgeKey = (age, type = 'general') => {
   return '60+';
 };
 
-// Helper: 점수 변환 (RunBTI 내부용 - 0~100점)
+// [핵심 수정] 점수 변환 함수: 구간별 비례 점수제 (Interpolation) 적용
 const getScoreFromGrade = (category, value, age, gender) => {
   if (value === undefined || value === null) return 0;
   
   const genderKey = (gender === '여성' || gender === 'F' || gender === 'female') ? 'female' : 'male';
-  let standards;
+  let standards = null;
 
-  if (METRIC_STANDARDS[category].all) {
-    standards = METRIC_STANDARDS[category].all;
-  } else if (METRIC_STANDARDS[category][genderKey]) {
-    const ageKey = getAgeKey(age, category === 'hopping' ? 'hopping' : 'general');
-    standards = METRIC_STANDARDS[category][genderKey][ageKey] || METRIC_STANDARDS[category][genderKey]['60+'];
+  // 1. 기준 데이터 찾기 (기존과 동일)
+  if (METRIC_STANDARDS[category] && METRIC_STANDARDS[category][genderKey]) {
+      let ageKey;
+      if (category === 'squat') {
+          const ageNum = parseInt(age);
+          if (ageNum < 30) ageKey = '20-29';
+          else if (ageNum < 40) ageKey = '30-39';
+          else if (ageNum < 50) ageKey = '40-49';
+          else if (ageNum < 60) ageKey = '50-59';
+          else ageKey = '60+';
+      } else {
+          ageKey = getAgeKey(age, category === 'hopping' ? 'hopping' : 'general');
+      }
+      standards = METRIC_STANDARDS[category][genderKey][ageKey];
+      if (!standards) standards = METRIC_STANDARDS[category][genderKey]['60+'] || METRIC_STANDARDS[category][genderKey]['50+'];
   }
 
   if (!standards) return 50;
 
-  if (!standards.excellent && standards.average) {
-    const ratio = value / standards.average;
-    if (ratio >= 1.0) return 55 + (ratio - 1) * 30; 
-    return 55 * ratio; 
+  // 2. [NEW] 정밀 점수 계산 (보간법)
+  // 등급표(Excellent/Good...)가 있는 경우 (스쿼트 등)
+  if (standards.excellent) {
+      // (1) Excellent 이상 (95 ~ 100점)
+      if (value >= standards.excellent) {
+          // Excellent 기준보다 얼마나 더 했나? (가산점)
+          const bonus = value - standards.excellent;
+          return Math.min(100, 95 + bonus); // 최대 100점
+      }
+      // (2) Good ~ Excellent 구간 (75 ~ 94점)
+      if (value >= standards.good) {
+          const range = standards.excellent - standards.good;
+          const position = value - standards.good;
+          return 75 + (position / range) * (94 - 75);
+      }
+      // (3) Average ~ Good 구간 (55 ~ 74점) -> 여기가 가장 중요!
+      if (value >= standards.average) {
+          const range = standards.good - standards.average;
+          const position = value - standards.average;
+          return 55 + (position / range) * (74 - 55);
+      }
+      // (4) Below ~ Average 구간 (40 ~ 54점)
+      if (value >= standards.below) {
+          const range = standards.average - standards.below;
+          const position = value - standards.below;
+          return 40 + (position / range) * (54 - 40);
+      }
+      // (5) Below 미만 (0 ~ 39점)
+      return Math.max(0, (value / standards.below) * 39);
   }
 
-  if (value >= standards.excellent) return 95; 
-  if (value >= standards.good) return 75;      
-  if (value >= standards.average) return 55;   
-  if (value >= standards.below) return 40;     
-  return 20;                                   
+  // 평균값만 있는 경우 (플랭크, 월싯, 호핑)
+  if (standards.average) {
+    const ratio = value / standards.average;
+    // 평균(1.0) = 55점
+    // 평균의 1.5배 = 85점, 2배 = 100점
+    if (ratio >= 1.0) {
+        return Math.min(100, 55 + (ratio - 1) * 60); // 계수 조정으로 고득점 가능성 확대
+    }
+    // 평균 미만
+    return Math.max(0, 55 * ratio);
+  }
+
+  return 50;
 };
 
 // [신규] 신체 나이 계산 함수 (UI 표기용)
 export const calculatePhysicalAge = (category, value, gender) => {
   const genderKey = (gender === '여성' || gender === 'F' || gender === 'female') ? 'female' : 'male';
   
-  // 1. 스쿼트: 나이대별 평균 데이터 매칭
-  if (category === 'squat') {
-      const table = METRIC_STANDARDS.squat[genderKey];
-      const ages = ['20-29', '30-39', '40-49', '50-59', '60+'];
-      for (const ageRange of ages) {
-        const std = table[ageRange].average;
-        if (value >= std) {
-            return ageRange.split('-')[0] + '대'; 
-        }
+  // 비교할 나이대 목록 (젊은 순)
+  // 스쿼트용과 일반용(플랭크/월싯) 키가 다를 수 있으므로 구분
+  const ageRanges = category === 'squat' 
+      ? ['20-29', '30-39', '40-49', '50-59', '60+']
+      : ['10-29', '30-39', '40-49', '50-59', '60+']; 
+
+  const table = METRIC_STANDARDS[category]?.[genderKey];
+  
+  // 1. 나이대별 평균 데이터가 있는 경우 (스쿼트, 플랭크, 월싯)
+  if (table) {
+      for (const ageRange of ageRanges) {
+          const std = table[ageRange]?.average;
+          if (std && value >= std) {
+              // "10-29" -> "20대", "30-39" -> "30대"로 변환
+              // 불필요한 텍스트((평균) 등)를 절대 붙이지 않음
+              let ageLabel = ageRange.split('-')[0];
+              if (ageLabel === '10') ageLabel = '20'; // 10-29는 20대로 표기
+              return ageLabel + '대';
+          }
       }
-      return '60대 이상';
+      return '60대+';
   }
 
-  // 2. 그 외: 절대평가 등급 표시
+// 2. 데이터가 없는 경우 (유연성 등) - 점수 기반 추정
+  // 텍스트를 붙이지 않고 나이만 리턴
   const score = getScoreFromGrade(category, value, 30, gender);
-  if (score >= 90) return '20대 (최상)';
-  if (score >= 70) return '20대 (우수)';
-  if (score >= 55) return '30대 (평균)';
+  if (score >= 90) return '20대';
+  if (score >= 70) return '20대';
+  if (score >= 55) return '30대';
   if (score >= 40) return '40대';
-  return '50대 이상';
+  return '50대+';
 };
 
 // 메인 분석 함수
