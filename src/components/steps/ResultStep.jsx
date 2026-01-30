@@ -207,6 +207,9 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
   const [activeTab, setActiveTab] = useState('MY_RESULT'); 
   const [selectedType, setSelectedType] = useState(null); 
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const [aiAdvice, setAiAdvice] = useState('');
+  const [aiAdviceError, setAiAdviceError] = useState('');
+  const [isAiAdviceLoading, setIsAiAdviceLoading] = useState(false);
   
   const [isSharing, setIsSharing] = useState(false);
   const [pregeneratedItem, setPregeneratedItem] = useState(null);
@@ -243,6 +246,58 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
             img.src = btiImageSrc;
         }
     }, [btiImageSrc]);
+
+  const adviceKey = JSON.stringify({
+    user: { age: userData?.age, gender: userData?.gender },
+    measurements,
+    result: { chartScores, physicalAge },
+  });
+
+  useEffect(() => {
+    if (!userData || !measurements || !bti) return;
+
+    const controller = new AbortController();
+    const fetchAdvice = async () => {
+      setIsAiAdviceLoading(true);
+      setAiAdviceError('');
+      setAiAdvice('');
+      try {
+        const res = await fetch('/api/advice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resultData: {
+              user: { age: userData?.age, gender: userData?.gender },
+              measurements,
+              result: {
+                bti,
+                btiInfo,
+                chartScores,
+                prescription,
+                physicalAge,
+              },
+            },
+          }),
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          throw new Error(`Advice request failed: ${res.status}`);
+        }
+        const data = await res.json();
+        setAiAdvice(data?.advice || '');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('AI advice error:', err);
+          setAiAdviceError('AI 코치 조언을 불러오지 못했습니다.');
+        }
+      } finally {
+        setIsAiAdviceLoading(false);
+      }
+    };
+
+    fetchAdvice();
+    return () => controller.abort();
+  }, [adviceKey]);
       
   const getThumbnail = (url) => {
       if (!url) return ''; 
@@ -572,6 +627,32 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                    </div>
               </div>
           </div>
+        </div>
+
+        {/* [NEW] AI 개인화 코멘트 */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 bg-indigo-50 text-indigo-500 rounded-lg">
+              <MessageCircle size={18} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-800">AI 코치 한줄 조언</h3>
+              <p className="text-[11px] text-slate-400">당신의 결과 데이터를 바탕으로 생성합니다</p>
+            </div>
+          </div>
+
+          {isAiAdviceLoading && (
+            <p className="text-sm text-slate-500 animate-pulse">AI 코치가 분석 중입니다…</p>
+          )}
+          {!isAiAdviceLoading && aiAdviceError && (
+            <p className="text-sm text-red-500">{aiAdviceError}</p>
+          )}
+          {!isAiAdviceLoading && !aiAdviceError && aiAdvice && (
+            <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{aiAdvice}</p>
+          )}
+          {!isAiAdviceLoading && !aiAdviceError && !aiAdvice && (
+            <p className="text-sm text-slate-400">잠시 후 개인화 조언이 표시됩니다.</p>
+          )}
         </div>
 
         {/* [하단] 약점 별 상세 가이드 + 영상 통합 */}
