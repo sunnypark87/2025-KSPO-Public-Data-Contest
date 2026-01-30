@@ -18,196 +18,248 @@ export const RUN_BTI_TYPES = {
   'PWRB': { name: '유리대포', desc: '한방(파워)은 있지만 내구성이 약해 쉽게 다칠 수 있는 타입입니다.', tags: ['파워', '전신보강'], feature: '순간적인 힘은 좋으나 이를 뒷받침할 코어, 유연성, 리듬감이 부족합니다.', runningGuide: '고강도 러닝은 자제하고 걷기부터 시작해 기초 근력을 키우세요.' }
 };
 
+// [신규] ㅁㅁ.txt 데이터 기반 측정 기준표
+// RunBTI 분류를 위해 'Average(평균)' 구간을 55점(Type 획득 기준)으로 설정
+const METRIC_STANDARDS = {
+  // [1] 플랭크 (ㅁㅁ.txt Source 12, 14) - 전체 연령 공통
+  plank: {
+    all: {
+      excellent: 240, // 4분 (Very Good 이상)
+      good: 120,      // 2분 (Above Average)
+      average: 60,    // 1분 (Average) -> 55점 부여 (기준점)
+      below: 30       // 30초
+    }
+  },
+
+  // [2] 월싯 (ㅁㅁ.txt Source 13) - 전체 연령 공통
+  wallSit: {
+    all: {
+      excellent: 100,
+      good: 75,
+      average: 50,    // 50초 -> 55점 부여
+      below: 25
+    }
+  },
+
+  // [3] 스쿼트 (ㅁㅁ.txt Source 15) - 성별/나이별 세분화
+  squat: {
+    male: {
+      '20-29': { excellent: 34, good: 33, average: 27, below: 24 },
+      '30-39': { excellent: 32, good: 30, average: 24, below: 21 },
+      '40-49': { excellent: 29, good: 27, average: 21, below: 18 },
+      '50-59': { excellent: 26, good: 24, average: 18, below: 15 },
+      '60+':   { excellent: 23, good: 21, average: 15, below: 12 }
+    },
+    female: {
+      '20-29': { excellent: 29, good: 27, average: 21, below: 18 },
+      '30-39': { excellent: 26, good: 24, average: 18, below: 15 },
+      '40-49': { excellent: 23, good: 21, average: 15, below: 12 },
+      '50-59': { excellent: 20, good: 18, average: 12, below: 9 },
+      '60+':   { excellent: 17, good: 15, average: 9,  below: 6 }
+    }
+  },
+
+  // [4] 호핑 (ㅁㅁ.txt Source 16) - 평균값(Mean) 기준
+  hopping: {
+    male: {
+      '18-30': { average: 57.7 },
+      '31-45': { average: 51.8 },
+      '46-60': { average: 44.2 },
+      '60+':   { average: 40.0 }
+    },
+    female: {
+      '18-30': { average: 49.8 },
+      '31-45': { average: 44.0 },
+      '46-60': { average: 37.5 },
+      '60+':   { average: 35.0 }
+    }
+  },
+  
+  // [5] 유연성 (기존 데이터 유지)
+  flexibility: {
+    male: { '20-29': { average: 9 }, '30-39': { average: 9 }, '40-49': { average: 9 }, '50+': { average: 8 } },
+    female: { '20-29': { average: 16 }, '30-39': { average: 15 }, '40-49': { average: 14 }, '50+': { average: 15 } }
+  }
+};
+
+// Helper: 나이대 Key 반환
+const getAgeKey = (age, type = 'general') => {
+  const ageNum = parseInt(age);
+  if (type === 'hopping') {
+    if (ageNum <= 30) return '18-30';
+    if (ageNum <= 45) return '31-45';
+    if (ageNum <= 60) return '46-60';
+    return '60+';
+  }
+  if (ageNum < 30) return '20-29';
+  if (ageNum < 40) return '30-39';
+  if (ageNum < 50) return '40-49';
+  if (ageNum < 60) return '50-59';
+  return '60+';
+};
+
+// [핵심 수정] 점수 변환 함수: 구간별 비례 점수제 (Interpolation) 적용
+const getScoreFromGrade = (category, value, age, gender) => {
+  if (value === undefined || value === null) return 0;
+  
+  const genderKey = (gender === '여성' || gender === 'F' || gender === 'female') ? 'female' : 'male';
+  let standards = null;
+
+  // 1. 기준 데이터 찾기 (기존과 동일)
+  if (METRIC_STANDARDS[category] && METRIC_STANDARDS[category][genderKey]) {
+      let ageKey;
+      if (category === 'squat') {
+          const ageNum = parseInt(age);
+          if (ageNum < 30) ageKey = '20-29';
+          else if (ageNum < 40) ageKey = '30-39';
+          else if (ageNum < 50) ageKey = '40-49';
+          else if (ageNum < 60) ageKey = '50-59';
+          else ageKey = '60+';
+      } else {
+          ageKey = getAgeKey(age, category === 'hopping' ? 'hopping' : 'general');
+      }
+      standards = METRIC_STANDARDS[category][genderKey][ageKey];
+      if (!standards) standards = METRIC_STANDARDS[category][genderKey]['60+'] || METRIC_STANDARDS[category][genderKey]['50+'];
+  }
+
+  if (!standards) return 50;
+
+  // 2. [NEW] 정밀 점수 계산 (보간법)
+  // 등급표(Excellent/Good...)가 있는 경우 (스쿼트 등)
+  if (standards.excellent) {
+      // (1) Excellent 이상 (95 ~ 100점)
+      if (value >= standards.excellent) {
+          // Excellent 기준보다 얼마나 더 했나? (가산점)
+          const bonus = value - standards.excellent;
+          return Math.min(100, 95 + bonus); // 최대 100점
+      }
+      // (2) Good ~ Excellent 구간 (75 ~ 94점)
+      if (value >= standards.good) {
+          const range = standards.excellent - standards.good;
+          const position = value - standards.good;
+          return 75 + (position / range) * (94 - 75);
+      }
+      // (3) Average ~ Good 구간 (55 ~ 74점) -> 여기가 가장 중요!
+      if (value >= standards.average) {
+          const range = standards.good - standards.average;
+          const position = value - standards.average;
+          return 55 + (position / range) * (74 - 55);
+      }
+      // (4) Below ~ Average 구간 (40 ~ 54점)
+      if (value >= standards.below) {
+          const range = standards.average - standards.below;
+          const position = value - standards.below;
+          return 40 + (position / range) * (54 - 40);
+      }
+      // (5) Below 미만 (0 ~ 39점)
+      return Math.max(0, (value / standards.below) * 39);
+  }
+
+  // 평균값만 있는 경우 (플랭크, 월싯, 호핑)
+  if (standards.average) {
+    const ratio = value / standards.average;
+    // 평균(1.0) = 55점
+    // 평균의 1.5배 = 85점, 2배 = 100점
+    if (ratio >= 1.0) {
+        return Math.min(100, 55 + (ratio - 1) * 60); // 계수 조정으로 고득점 가능성 확대
+    }
+    // 평균 미만
+    return Math.max(0, 55 * ratio);
+  }
+
+  return 50;
+};
+
+// [신규] 신체 나이 계산 함수 (UI 표기용)
+export const calculatePhysicalAge = (category, value, gender) => {
+  const genderKey = (gender === '여성' || gender === 'F' || gender === 'female') ? 'female' : 'male';
+  
+  // 비교할 나이대 목록 (젊은 순)
+  // 스쿼트용과 일반용(플랭크/월싯) 키가 다를 수 있으므로 구분
+  const ageRanges = category === 'squat' 
+      ? ['20-29', '30-39', '40-49', '50-59', '60+']
+      : ['10-29', '30-39', '40-49', '50-59', '60+']; 
+
+  const table = METRIC_STANDARDS[category]?.[genderKey];
+  
+  // 1. 나이대별 평균 데이터가 있는 경우 (스쿼트, 플랭크, 월싯)
+  if (table) {
+      for (const ageRange of ageRanges) {
+          const std = table[ageRange]?.average;
+          if (std && value >= std) {
+              // "10-29" -> "20대", "30-39" -> "30대"로 변환
+              // 불필요한 텍스트((평균) 등)를 절대 붙이지 않음
+              let ageLabel = ageRange.split('-')[0];
+              if (ageLabel === '10') ageLabel = '20'; // 10-29는 20대로 표기
+              return ageLabel + '대';
+          }
+      }
+      return '60대+';
+  }
+
+// 2. 데이터가 없는 경우 (유연성 등) - 점수 기반 추정
+  // 텍스트를 붙이지 않고 나이만 리턴
+  const score = getScoreFromGrade(category, value, 30, gender);
+  if (score >= 90) return '20대';
+  if (score >= 70) return '20대';
+  if (score >= 55) return '30대';
+  if (score >= 40) return '40대';
+  return '50대+';
+};
+
+// 메인 분석 함수
 export const analyzeRunBTI = (results, age, gender) => {
   const { plank, wallSit, squat, hopping, flexibility } = results;
 
-  const AGE_NORMS = [
-    {
-      min: 0,
-      max: 29,
-      norms: {
-        plank: { mean: 55, sd: 18 },       // seconds
-        wallSit: { mean: 60, sd: 20 },     // seconds
-        squat: { mean: 32, sd: 9 },        // reps in 60s
-        hopping: { mean: 55, sd: 12 },     // seconds
-        flexibility: { mean: 4, sd: 8 }    // cm
-      }
-    },
-    {
-      min: 30,
-      max: 39,
-      norms: {
-        plank: { mean: 50, sd: 17 },
-        wallSit: { mean: 55, sd: 19 },
-        squat: { mean: 30, sd: 9 },
-        hopping: { mean: 50, sd: 12 },
-        flexibility: { mean: 3, sd: 8 }
-      }
-    },
-    {
-      min: 40,
-      max: 49,
-      norms: {
-        plank: { mean: 45, sd: 16 },
-        wallSit: { mean: 50, sd: 18 },
-        squat: { mean: 27, sd: 8 },
-        hopping: { mean: 45, sd: 11 },
-        flexibility: { mean: 2, sd: 7 }
-      }
-    },
-    {
-      min: 50,
-      max: Infinity,
-      norms: {
-        plank: { mean: 40, sd: 15 },
-        wallSit: { mean: 45, sd: 17 },
-        squat: { mean: 24, sd: 8 },
-        hopping: { mean: 40, sd: 10 },
-        flexibility: { mean: 1, sd: 7 }
-      }
-    }
-  ];
+  const plankSec = (plank || 0) / 1000;
+  const wallSitSec = (wallSit || 0) / 1000;
+  const hoppingSec = (hopping || 0) / 1000;
+  const squatCount = squat || 0;
+  const flexCm = flexibility || 0;
 
-  const clamp = (val, min, max) => Math.min(max, Math.max(min, val));
-
-  const erf = (x) => {
-    const sign = x < 0 ? -1 : 1;
-    const absX = Math.abs(x);
-    const t = 1 / (1 + 0.3275911 * absX);
-    const a1 = 0.254829592;
-    const a2 = -0.284496736;
-    const a3 = 1.421413741;
-    const a4 = -1.453152027;
-    const a5 = 1.061405429;
-    const poly = (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t;
-    const y = 1 - poly * Math.exp(-absX * absX);
-    return sign * y;
-  };
-
-  const percentileFromValue = (value, mean, sd) => {
-    if (!Number.isFinite(value) || !Number.isFinite(mean) || !Number.isFinite(sd) || sd <= 0) {
-      return 0;
-    }
-    const z = (value - mean) / sd;
-    const cdf = 0.5 * (1 + erf(z / Math.SQRT2));
-    return clamp(cdf * 100, 0, 100);
-  };
-
-  const safeNumber = (val, fallback = 0) => (Number.isFinite(val) ? val : fallback);
-
-  const norms = AGE_NORMS.find((group) => age >= group.min && age <= group.max)?.norms ?? AGE_NORMS[0].norms;
-
-  const plankSec = safeNumber(plank) / 1000;
-  const wallSitSec = safeNumber(wallSit) / 1000;
-  const hoppingSec = safeNumber(hopping) / 1000;
-  const squatCount = safeNumber(squat);
-  const flexibilityCm = safeNumber(flexibility);
-
-  const measurementScores = {
-    plank: percentileFromValue(plankSec, norms.plank.mean, norms.plank.sd),
-    wallSit: percentileFromValue(wallSitSec, norms.wallSit.mean, norms.wallSit.sd),
-    squat: percentileFromValue(squatCount, norms.squat.mean, norms.squat.sd),
-    hopping: percentileFromValue(hoppingSec, norms.hopping.mean, norms.hopping.sd),
-    flexibility: percentileFromValue(flexibilityCm, norms.flexibility.mean, norms.flexibility.sd)
-  };
-
-  const average = (values) => {
-    const total = values.reduce((sum, val) => sum + val, 0);
-    return values.length ? total / values.length : 0;
+  const scores = {
+    plank: getScoreFromGrade('plank', plankSec, age, gender),
+    wallSit: getScoreFromGrade('wallSit', wallSitSec, age, gender),
+    squat: getScoreFromGrade('squat', squatCount, age, gender),
+    hopping: getScoreFromGrade('hopping', hoppingSec, age, gender),
+    flexibility: getScoreFromGrade('flexibility', flexCm, age, gender)
   };
 
   const skillScores = {
-    power: average([measurementScores.squat, measurementScores.hopping]),
-    core: average([measurementScores.plank, measurementScores.wallSit]),
-    flexibility: measurementScores.flexibility,
-    agility: measurementScores.hopping
+    power: (scores.squat + scores.hopping) / 2, 
+    core: (scores.plank + scores.wallSit) / 2,  
+    flexibility: scores.flexibility,            
+    agility: scores.hopping                     
   };
 
-  const type1 = skillScores.power > 50 ? 'P' : 'E';
-  const type2 = skillScores.core > 50 ? 'S' : 'W';
-  const type3 = skillScores.flexibility > 50 ? 'F' : 'R';
-  const type4 = skillScores.agility > 50 ? 'A' : 'B';
+  const type1 = skillScores.power >= 50 ? 'P' : 'E'; 
+  const type2 = skillScores.core >= 50 ? 'S' : 'W';  
+  const type3 = skillScores.flexibility >= 50 ? 'F' : 'R'; 
+  const type4 = skillScores.agility >= 50 ? 'A' : 'B'; 
 
   const bti = `${type1}${type2}${type3}${type4}`;
 
-  const typeInfo = RUN_BTI_TYPES[bti] || {
-    ...RUN_BTI_TYPES['EWRB'],
-    name: `미지의 러너 ${bti}`,
-    desc: '독특한 신체 밸런스를 가졌습니다. 균형 잡힌 훈련이 필요합니다.'
-  };
-
   return {
     bti,
-    result: typeInfo,
-    chartScores: {
-      power: skillScores.power,
-      core: skillScores.core,
-      flexibility: skillScores.flexibility,
-      agility: skillScores.agility
-    },
-    scores: {
-      power: type1 === 'P' ? '파워형' : '지구력형',
-      core: type2 === 'S' ? '안정적' : '보강필요',
-      flexibility: type3 === 'F' ? '유연함' : '뻣뻣함',
-      agility: type4 === 'A' ? '경쾌함' : '노력필요'
+    result: RUN_BTI_TYPES[bti] || RUN_BTI_TYPES['EWRB'],
+    chartScores: skillScores, 
+    // [신규] 프론트엔드 표기용 신체 나이
+    physicalAge: {
+        power: calculatePhysicalAge('squat', squatCount, gender), 
+        core: calculatePhysicalAge('plank', plankSec, gender),
+        flexibility: calculatePhysicalAge('flexibility', flexCm, gender)
     },
     prescription: generatePrescription(type1, type2, type3, type4)
   };
 };
 
-// [수정] 맞춤형 처방전에 'weaknessCode' 추가 (영상 매칭용)
 const generatePrescription = (t1, t2, t3, t4) => {
     const list = [];
+    if (t2 === 'W') list.push({ type: 'warning', weaknessCode: 'W', title: '🚨 코어 보강 추천', msg: '허리를 지탱하는 힘이 부족해요. 달릴 때 자세가 무너질 수 있습니다.', solution: '플랭크, 데드버그 3세트' });
+    if (t3 === 'R') list.push({ type: 'warning', weaknessCode: 'R', title: '🚨 유연성 관리 필수', msg: '관절이 뻣뻣해 충격 흡수가 안 됩니다. 햄스트링/종아리 부상 위험이 높아요.', solution: '러닝 후 폼롤러로 종아리와 햄스트링을 10분 이상 풀어주세요.' });
+    if (t4 === 'B') list.push({ type: 'advice', weaknessCode: 'B', title: '👟 리듬감 훈련', msg: '지면을 차고 나가는 탄력이 부족해 러닝 효율이 떨어집니다.', solution: '줄넘기나 계단 오르기로 발목 탄력을 키워보세요.' });
+    if (t1 === 'P' && t2 === 'W') list.push({ type: 'danger', weaknessCode: 'P_WEAK_CORE', title: '🔥 과속 주의!', msg: '힘은 좋지만 차체(코어)가 흔들려 무릎 연골이 다칠 수 있습니다.', solution: '속도를 조금 줄이고 케이던스(발구름)를 180으로 높여 가볍게 뛰세요.' });
     
-    if (t2 === 'W') {
-        list.push({
-            type: 'warning',
-            weaknessCode: 'W', // 코어 약함 -> 코어 운동 영상
-            title: '🚨 코어 보강 추천',
-            msg: '허리를 지탱하는 힘이 부족해요. 달릴 때 자세가 무너질 수 있습니다.',
-            solution: '플랭크, 데드버그 3세트'
-        });
-    }
-    
-    if (t3 === 'R') {
-        list.push({
-            type: 'warning',
-            weaknessCode: 'R', // 유연성 부족 -> 스트레칭 영상
-            title: '🚨 유연성 관리 필수',
-            msg: '관절이 뻣뻣해 충격 흡수가 안 됩니다. 햄스트링/종아리 부상 위험이 높아요.',
-            solution: '러닝 후 폼롤러로 종아리와 햄스트링을 10분 이상 풀어주세요.'
-        });
-    }
-    
-    if (t4 === 'B') {
-        list.push({
-            type: 'advice',
-            weaknessCode: 'B', // 리듬감 부족 -> 피치/줄넘기 영상
-            title: '👟 리듬감 훈련',
-            msg: '지면을 차고 나가는 탄력이 부족해 러닝 효율이 떨어집니다.',
-            solution: '줄넘기나 계단 오르기로 발목 탄력을 키워보세요.'
-        });
-    }
-
-    if (t1 === 'P' && t2 === 'W') {
-        list.push({
-            type: 'danger',
-            weaknessCode: 'P_WEAK_CORE', // 파워형+코어부족 -> 런지 등 밸런스 운동
-            title: '🔥 과속 주의!',
-            msg: '힘은 좋지만 차체(코어)가 흔들려 무릎 연골이 다칠 수 있습니다.',
-            solution: '속도를 조금 줄이고 케이던스(발구름)를 180으로 높여 가볍게 뛰세요.'
-        });
-    }
-
-    if (list.length === 0) {
-        list.push({
-            type: 'success',
-            weaknessCode: 'ALL_GOOD', // 상태 좋음 -> 고강도/전신 운동
-            title: '🎉 훌륭한 상태!',
-            msg: '부상 위험 요소가 적습니다. 지금처럼 꾸준히 관리하며 기록 단축에 도전해보세요!',
-            solution: '인터벌 트레이닝으로 심폐지구력을 더 키워보세요.'
-        });
-    }
-    
+    if (list.length === 0) list.push({ type: 'success', weaknessCode: 'ALL_GOOD', title: '🎉 훌륭한 상태!', msg: '부상 위험 요소가 적습니다. 지금처럼 꾸준히 관리하며 기록 단축에 도전해보세요!', solution: '인터벌 트레이닝으로 심폐지구력을 더 키워보세요.' });
     return list;
 };
