@@ -42,23 +42,23 @@ const PhysicalAgeCard = ({ label, value }) => {
 
     // 나이대별 피트니스 컨셉 이모티콘 매핑
     if (value && value.includes('20')) {
-        comment = "최고의 전성기! 🚀"; // 20대: 폭발적인 에너지
+        comment = "최고의 전성기!"; // 20대: 폭발적인 에너지
         icon = "🚀";
         bgStyle = "bg-blue-50 text-blue-600 border-blue-100";
     } else if (value && value.includes('30')) {
-        comment = "탄탄한 피지컬 💪"; // 30대: 가장 강력한 근력
+        comment = "탄탄한 피지컬"; // 30대: 가장 강력한 근력
         icon = "💪";
         bgStyle = "bg-green-50 text-green-600 border-green-100";
     } else if (value && value.includes('40')) {
-        comment = "지치지 않는 체력 👟"; // 40대: 꾸준한 지구력
+        comment = "지치지 않는 체력"; // 40대: 꾸준한 지구력
         icon = "👟";
         bgStyle = "bg-yellow-50 text-yellow-600 border-yellow-100";
     } else if (value && value.includes('50')) {
-        comment = "단단한 내공 ⛰️"; // 50대: 흔들리지 않는 등산객 포스
+        comment = "단단한 내공"; // 50대: 흔들리지 않는 등산객 포스
         icon = "⛰️";
         bgStyle = "bg-orange-50 text-orange-600 border-orange-100";
     } else {
-        comment = "존경스러운 관리 👑"; // 60대 이상: 레전드
+        comment = "존경스러운 관리"; // 60대 이상: 레전드
         icon = "👑";
         bgStyle = "bg-purple-50 text-purple-600 border-purple-100";
     }
@@ -270,10 +270,7 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
               user: { age: userData?.age, gender: userData?.gender },
               measurements,
               result: {
-                bti,
-                btiInfo,
                 chartScores,
-                prescription,
                 physicalAge,
               },
             },

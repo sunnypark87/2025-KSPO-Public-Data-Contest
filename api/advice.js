@@ -15,7 +15,10 @@ export default async function handler(req, res) {
 
   try {
     const systemPrompt =
-      'You are a friendly running coach. Write 1-2 short lines in Korean. ' +
+      'You are a friendly running coach. Analyze the user\'s current fitness/health status ' +
+      'based on the provided results, then give advice for better running. ' +
+      'Write 1-2 short lines in Korean ONLY. Do not use any English words. ' +
+      'If any part is not Korean, rewrite it fully in Korean. ' +
       'Use the full result data provided. Be supportive and specific. ' +
       'Avoid medical diagnosis, guarantees, or unsafe advice. No markdown.';
 
@@ -42,7 +45,7 @@ export default async function handler(req, res) {
             ],
           },
         ],
-        max_output_tokens: 120,
+        max_output_tokens: 200,
         temperature: 0.7,
       }),
     });
