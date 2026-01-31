@@ -47,32 +47,32 @@
 
 ---
 
-## 4. Technology Stack
+## 4. Skill Stack
 
 본 프로젝트는 최신 웹 기술 표준을 준수하며, 고성능과 유지보수성을 고려하여 선정되었습니다.
 
 ### 4.1. Core Framework & Environment
-| Category | Technology | Version | Description |
+| Category | Technology | Version |
 | :--- | :--- | :--- | :--- |
-| **Runtime** | Node.js | - | JavaScript 런타임 환경 |
-| **Framework** | **React** | **v19.2.0** | 컴포넌트 기반 UI 라이브러리 (최신 React 19 적용) |
-| **Build Tool** | **Vite** | **v7.2.4** | ESModules 기반의 초고속 빌드 도구 |
+| **Runtime** | Node.js | - | 
+| **Framework** | **React** | **v19.2.0** | 
+| **Build Tool** | **Vite** | **v7.2.4** | 
 
 ### 4.2. Dependencies & Libraries
-| Category | Technology | Version | Description |
+| Category | Technology | Version | 
 | :--- | :--- | :--- | :--- |
-| **Styling** | **Tailwind CSS** | **v4.1.17** | Utility-First CSS 프레임워크 (v4 엔진 적용) |
-| **Animation** | **Framer Motion** | **v12.23.25** | React용 프로덕션 레벨 모션 라이브러리 |
-| **Backend/DB** | **Firebase** | **v12.7.0** | NoSQL(Firestore) 기반 데이터 저장 및 호스팅 |
-| **Visualization** | Custom SVG | - | 레이더 차트 및 타이머 시각화 자체 구현 |
-| **Utility** | html-to-image | v1.11.13 | 결과 리포트 이미지 렌더링 및 저장 |
-| **Icons** | Lucide React | v0.555.0 | 일관된 UI 아이콘 시스템 |
+| **Styling** | **Tailwind CSS** | **v4.1.17** | 
+| **Animation** | **Framer Motion** | **v12.23.25** |
+| **Backend/DB** | **Firebase** | **v12.7.0** | 
+| **Visualization** | Custom SVG | - | 
+| **Utility** | html-to-image | v1.11.13 | 
+| **Icons** | Lucide React | v0.555.0 | 
 
 ### 4.3. Development Tools
-| Category | Technology | Version | Description |
+| Category | Technology | Version |
 | :--- | :--- | :--- | :--- |
-| **Linter** | ESLint | v9.39.1 | 코드 품질 관리 및 정적 분석 |
-| **Package Manager** | NPM | - | 패키지 의존성 관리 |
+| **Linter** | ESLint | v9.39.1 |
+| **Package Manager** | NPM | - |
 
 ---
 
