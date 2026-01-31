@@ -42,23 +42,23 @@ const PhysicalAgeCard = ({ label, value }) => {
 
     // 나이대별 피트니스 컨셉 이모티콘 매핑
     if (value && value.includes('20')) {
-        comment = "최고의 전성기! 🚀"; // 20대: 폭발적인 에너지
+        comment = "최고의 전성기!"; // 20대: 폭발적인 에너지
         icon = "🚀";
         bgStyle = "bg-blue-50 text-blue-600 border-blue-100";
     } else if (value && value.includes('30')) {
-        comment = "탄탄한 피지컬 💪"; // 30대: 가장 강력한 근력
+        comment = "탄탄한 피지컬"; // 30대: 가장 강력한 근력
         icon = "💪";
         bgStyle = "bg-green-50 text-green-600 border-green-100";
     } else if (value && value.includes('40')) {
-        comment = "지치지 않는 체력 👟"; // 40대: 꾸준한 지구력
+        comment = "지치지 않는 체력"; // 40대: 꾸준한 지구력
         icon = "👟";
         bgStyle = "bg-yellow-50 text-yellow-600 border-yellow-100";
     } else if (value && value.includes('50')) {
-        comment = "단단한 내공 ⛰️"; // 50대: 흔들리지 않는 등산객 포스
+        comment = "단단한 내공"; // 50대: 흔들리지 않는 등산객 포스
         icon = "⛰️";
         bgStyle = "bg-orange-50 text-orange-600 border-orange-100";
     } else {
-        comment = "존경스러운 관리 👑"; // 60대 이상: 레전드
+        comment = "존경스러운 관리"; // 60대 이상: 레전드
         icon = "👑";
         bgStyle = "bg-purple-50 text-purple-600 border-purple-100";
     }
@@ -207,6 +207,9 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
   const [activeTab, setActiveTab] = useState('MY_RESULT'); 
   const [selectedType, setSelectedType] = useState(null); 
   const [selectedVideo, setSelectedVideo] = useState(null);
+  const [aiAdvice, setAiAdvice] = useState('');
+  const [aiAdviceError, setAiAdviceError] = useState('');
+  const [isAiAdviceLoading, setIsAiAdviceLoading] = useState(false);
   
   const [isSharing, setIsSharing] = useState(false);
   const [pregeneratedItem, setPregeneratedItem] = useState(null);
@@ -243,6 +246,55 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
             img.src = btiImageSrc;
         }
     }, [btiImageSrc]);
+
+  const adviceKey = JSON.stringify({
+    user: { age: userData?.age, gender: userData?.gender },
+    measurements,
+    result: { chartScores, physicalAge },
+  });
+
+  useEffect(() => {
+    if (!userData || !measurements || !bti) return;
+
+    const controller = new AbortController();
+    const fetchAdvice = async () => {
+      setIsAiAdviceLoading(true);
+      setAiAdviceError('');
+      setAiAdvice('');
+      try {
+        const res = await fetch('/api/advice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            resultData: {
+              user: { age: userData?.age, gender: userData?.gender },
+              measurements,
+              result: {
+                chartScores,
+                physicalAge,
+              },
+            },
+          }),
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          throw new Error(`Advice request failed: ${res.status}`);
+        }
+        const data = await res.json();
+        setAiAdvice(data?.advice || '');
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          console.error('AI advice error:', err);
+          setAiAdviceError('AI 코치 조언을 불러오지 못했습니다.');
+        }
+      } finally {
+        setIsAiAdviceLoading(false);
+      }
+    };
+
+    fetchAdvice();
+    return () => controller.abort();
+  }, [adviceKey]);
       
   const getThumbnail = (url) => {
       if (!url) return ''; 
@@ -572,6 +624,32 @@ export const ResultStep = ({ userData, measurements, onReset }) => {
                    </div>
               </div>
           </div>
+        </div>
+
+        {/* [NEW] AI 개인화 코멘트 */}
+        <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 bg-indigo-50 text-indigo-500 rounded-lg">
+              <MessageCircle size={18} />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-800">AI 코치 한줄 조언</h3>
+              <p className="text-[11px] text-slate-400">당신의 결과 데이터를 바탕으로 생성합니다</p>
+            </div>
+          </div>
+
+          {isAiAdviceLoading && (
+            <p className="text-sm text-slate-500 animate-pulse">AI 코치가 분석 중입니다…</p>
+          )}
+          {!isAiAdviceLoading && aiAdviceError && (
+            <p className="text-sm text-red-500">{aiAdviceError}</p>
+          )}
+          {!isAiAdviceLoading && !aiAdviceError && aiAdvice && (
+            <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{aiAdvice}</p>
+          )}
+          {!isAiAdviceLoading && !aiAdviceError && !aiAdvice && (
+            <p className="text-sm text-slate-400">잠시 후 개인화 조언이 표시됩니다.</p>
+          )}
         </div>
 
         {/* [하단] 약점 별 상세 가이드 + 영상 통합 */}

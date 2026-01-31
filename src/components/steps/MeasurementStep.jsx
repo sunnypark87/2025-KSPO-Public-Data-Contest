@@ -50,7 +50,7 @@ const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, 
     pause(); 
     const finalTime = timeMs;
 
-    if (type === 'squat') {
+    if (type === 'squat' || type === 'hopping') {
         setStatus('input_required');
         onResult('INPUT_REQUIRED');
         return;
@@ -62,7 +62,7 @@ const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, 
 
   useEffect(() => {
     if (isFinished && (status === 'idle' || status === 'running')) {
-      if(type === 'squat') {
+      if (type === 'squat' || type === 'hopping') {
         setStatus('input_required');
         onResult('INPUT_REQUIRED');
       } else {
@@ -80,7 +80,7 @@ const LinearTimer = ({ title, subTitle, duration = 60, bpm = 0, onResult, type, 
 
   const getGoalText = () => {
     if (!standard) return `목표: ${duration}초`;
-    if (type === 'squat') return `내 나이 평균: ${standard}회 (60초)`;
+    if (type === 'squat' || type === 'hopping') return `내 나이 평균: ${standard}회 (30초)`;
     return `내 나이 평균: ${standard}초 버티기`;
   };
 
@@ -205,6 +205,8 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
   // [수정] 스쿼트 입력을 위한 임시 상태 추가
   const [showSquatInput, setShowSquatInput] = useState(false);
   const [squatInput, setSquatInput] = useState(''); // 입력값 임시 저장용
+  const [showHoppingInput, setShowHoppingInput] = useState(false);
+  const [hoppingInput, setHoppingInput] = useState('');
 
   // 각 테스트별 설정 데이터
   const TEST_STEPS = [
@@ -293,6 +295,12 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
     }
   };
 
+  const handleHoppingTimerEnd = (val) => {
+    if (val === 'INPUT_REQUIRED' || val >= 60000) {
+        setShowHoppingInput(true);
+    }
+  };
+
   // [수정] 스쿼트 입력 완료 처리 (입력 완료 버튼 클릭 시 실행)
   const confirmSquatInput = () => {
     const val = parseInt(squatInput);
@@ -303,6 +311,16 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
     }
     setResults(prev => ({ ...prev, squat: val }));
     setShowSquatInput(false);
+  };
+
+  const confirmHoppingInput = () => {
+    const val = parseInt(hoppingInput);
+    if (isNaN(val) || val < 0) {
+        alert("올바른 횟수를 입력해주세요.");
+        return;
+    }
+    setResults(prev => ({ ...prev, hopping: val }));
+    setShowHoppingInput(false);
   };
 
   return (
@@ -343,7 +361,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                         {currentTestConfig.id === 'squat' && showSquatInput ? (
                              <div className="bg-white p-6 rounded-2xl border border-blue-200 shadow-lg h-full flex flex-col justify-center">
                                 <h3 className="text-xl font-bold text-center mb-6">스쿼트 횟수 입력</h3>
-                                <label className="block text-sm font-bold text-slate-700 mb-2">60초 동안 수행한 횟수는?</label>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">30초 동안 수행한 횟수는?</label>
                                 
                                 {/* [수정] 사파리 대응: flex 대신 grid 사용으로 레이아웃 안정화 */}
                                 <div className="grid grid-cols-[1fr_auto] gap-2 mb-4 w-full">
@@ -364,6 +382,29 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
 
                                 {getStepStandard('squat') && <p className="text-xs text-slate-400 mt-2 text-center">※ {userData.age}세 평균: 약 {getStepStandard('squat')}회</p>}
                              </div>
+                        ) : currentTestConfig.id === 'hopping' && showHoppingInput ? (
+                             <div className="bg-white p-6 rounded-2xl border border-blue-200 shadow-lg h-full flex flex-col justify-center">
+                                <h3 className="text-xl font-bold text-center mb-6">제자리 뛰기 횟수 입력</h3>
+                                <label className="block text-sm font-bold text-slate-700 mb-2">30초 동안 수행한 횟수는?</label>
+                                
+                                <div className="grid grid-cols-[1fr_auto] gap-2 mb-4 w-full">
+                                    <input 
+                                        type="number" 
+                                        placeholder="0" 
+                                        value={hoppingInput}
+                                        className="w-full p-4 border border-slate-300 rounded-xl text-2xl font-bold outline-blue-500 text-center min-w-0"
+                                        onChange={(e) => setHoppingInput(e.target.value)}
+                                    />
+                                    <button 
+                                        onClick={confirmHoppingInput}
+                                        className="bg-blue-600 text-white px-6 rounded-xl font-bold whitespace-nowrap hover:bg-blue-700 transition-colors"
+                                    >
+                                        입력 완료
+                                    </button>
+                                </div>
+
+                                {getStepStandard('hopping') && <p className="text-xs text-slate-400 mt-2 text-center">※ {userData.age}세 평균: 약 {getStepStandard('hopping')}회</p>}
+                             </div>
                         ) : currentTestConfig.id === 'squat' && results.squat !== null ? (
                             // 스쿼트 완료 후 결과 표시 화면
                             <div className="bg-white rounded-2xl p-8 border border-slate-100 shadow-lg text-center h-full flex flex-col justify-center items-center">
@@ -382,21 +423,39 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                                     <RotateCcw size={18} /> 다시 측정하기
                                 </button>
                             </div>
+                        ) : currentTestConfig.id === 'hopping' && results.hopping !== null ? (
+                            <div className="bg-white rounded-2xl p-8 border border-slate-100 shadow-lg text-center h-full flex flex-col justify-center items-center">
+                                <div className="mb-8">
+                                    <p className="text-slate-500 font-bold mb-2">측정 기록</p>
+                                    <p className="text-6xl font-black text-blue-600 tracking-tight">{results.hopping}<span className="text-3xl ml-2 text-slate-400 font-bold">회</span></p>
+                                </div>
+                                <button 
+                                   onClick={() => {
+                                       setResults(prev => ({ ...prev, hopping: null }));
+                                       setHoppingInput('');
+                                       setShowHoppingInput(false);
+                                   }} 
+                                   className="py-3 px-6 text-slate-500 font-medium hover:text-slate-700 flex items-center justify-center gap-2 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
+                                >
+                                    <RotateCcw size={18} /> 다시 측정하기
+                                </button>
+                            </div>
                         ) : (
                             // 일반 타이머 렌더링
                             <LinearTimer
                                 type={currentTestConfig.id}
                                 title={currentTestConfig.title}
-                                subTitle={`목표: ${getStepStandard(currentTestConfig.id) || 60}${currentTestConfig.id === 'squat' ? '회' : '초'}`}
-                                duration={currentTestConfig.id === 'squat' ? 60 : (getStandard(currentTestConfig.id, userData.age, userData.gender) || 60)}
+                                subTitle={`목표: ${getStepStandard(currentTestConfig.id) || 60}${currentTestConfig.id === 'squat' || currentTestConfig.id === 'hopping' ? '회' : '초'}`}
+                                duration={currentTestConfig.id === 'squat' || currentTestConfig.id === 'hopping' ? 30 : (getStandard(currentTestConfig.id, userData.age, userData.gender) || 60)}
                                 bpm={currentTestConfig.bpm || 0}
-                                allowOvertime={['plank', 'wallSit', 'hopping'].includes(currentTestConfig.id)}
+                                allowOvertime={['plank', 'wallSit'].includes(currentTestConfig.id)}
                                 userAge={userData.age}
                                 userGender={userData.gender}
                                 guideUrl={currentTestConfig.guideUrl}
                                 precautions={currentTestConfig.precautions}
                                 onResult={(val) => {
                                     if (currentTestConfig.id === 'squat') handleSquatTimerEnd(val);
+                                    else if (currentTestConfig.id === 'hopping') handleHoppingTimerEnd(val);
                                     else setResults(prev => ({ ...prev, [currentTestConfig.id]: val }));
                                 }}
                             />
