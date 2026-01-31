@@ -174,7 +174,7 @@ const MeasurementItem = ({ title, desc }) => (
 
 const TypeCard = ({ bti, name, img, color }) => (
   <div className={`p-5 rounded-[24px] ${color} border border-white/50 shadow-sm text-center space-y-3 cursor-pointer hover:scale-102 hover:shadow-md transition-all active:scale-95`}>
-    <div className="w-24 h-24 mx-auto drop-shadow-md bg-white/60 rounded-full p-2 flex items-center justify-center">
+    <div className="w-32 h-32 mx-auto drop-shadow-md bg-white/60 rounded-full p-2 flex items-center justify-center">
       {img ? (
         <img src={img} alt={bti} className="w-full h-full object-contain" />
       ) : (
