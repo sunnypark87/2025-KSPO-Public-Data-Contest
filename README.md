@@ -53,14 +53,14 @@
 
 ### 4.1. Core Framework & Environment
 | Category | Technology | Version |
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- | 
 | **Runtime** | Node.js | - | 
 | **Framework** | **React** | **v19.2.0** | 
 | **Build Tool** | **Vite** | **v7.2.4** | 
 
 ### 4.2. Dependencies & Libraries
 | Category | Technology | Version | 
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- | 
 | **Styling** | **Tailwind CSS** | **v4.1.17** | 
 | **Animation** | **Framer Motion** | **v12.23.25** |
 | **Backend/DB** | **Firebase** | **v12.7.0** | 
@@ -70,7 +70,7 @@
 
 ### 4.3. Development Tools
 | Category | Technology | Version |
-| :--- | :--- | :--- | :--- |
+| :--- | :--- | :--- | 
 | **Linter** | ESLint | v9.39.1 |
 | **Package Manager** | NPM | - |
 
