@@ -367,6 +367,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                                 <div className="grid grid-cols-[1fr_auto] gap-2 mb-4 w-full">
                                     <input 
                                         type="number" 
+                                        name="squat"
                                         placeholder="0" 
                                         value={squatInput}
                                         className="w-full p-4 border border-slate-300 rounded-xl text-2xl font-bold outline-blue-500 text-center min-w-0"
@@ -390,6 +391,7 @@ export const MeasurementStep = ({ userData, onSubmit }) => {
                                 <div className="grid grid-cols-[1fr_auto] gap-2 mb-4 w-full">
                                     <input 
                                         type="number" 
+                                        name="hopping"
                                         placeholder="0" 
                                         value={hoppingInput}
                                         className="w-full p-4 border border-slate-300 rounded-xl text-2xl font-bold outline-blue-500 text-center min-w-0"

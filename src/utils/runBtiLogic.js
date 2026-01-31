@@ -105,23 +105,36 @@ const getScoreFromGrade = (category, value, age, gender) => {
   const genderKey = (gender === '여성' || gender === 'F' || gender === 'female') ? 'female' : 'male';
   let standards = null;
 
-  // 1. 기준 데이터 찾기 (기존과 동일)
-  if (METRIC_STANDARDS[category] && METRIC_STANDARDS[category][genderKey]) {
-      let ageKey;
-      if (category === 'squat') {
-          const ageNum = parseInt(age);
-          if (ageNum < 30) ageKey = '20-29';
-          else if (ageNum < 40) ageKey = '30-39';
-          else if (ageNum < 50) ageKey = '40-49';
-          else if (ageNum < 60) ageKey = '50-59';
-          else ageKey = '60+';
-      } else {
-          ageKey = getAgeKey(age, category === 'hopping' ? 'hopping' : 'general');
+  // 1. 기준 데이터 찾기 (수정됨)
+  if (METRIC_STANDARDS[category]) {
+      // (1) 먼저 'all' (남녀 공통) 키가 있는지 확인
+      if (METRIC_STANDARDS[category]['all']) {
+          standards = METRIC_STANDARDS[category]['all'];
+      } 
+      // (2) 없다면 성별 키(male/female) 확인
+      else if (METRIC_STANDARDS[category][genderKey]) {
+          let ageKey;
+          if (category === 'squat') {
+              const ageNum = parseInt(age);
+              if (ageNum < 30) ageKey = '20-29';
+              else if (ageNum < 40) ageKey = '30-39';
+              else if (ageNum < 50) ageKey = '40-49';
+              else if (ageNum < 60) ageKey = '50-59';
+              else ageKey = '60+';
+          } else {
+              ageKey = getAgeKey(age, category === 'hopping' ? 'hopping' : 'general');
+          }
+          
+          standards = METRIC_STANDARDS[category][genderKey][ageKey];
+          
+          // 해당 나이대가 없으면 60+ 또는 50+ 사용
+          if (!standards) {
+              standards = METRIC_STANDARDS[category][genderKey]['60+'] || METRIC_STANDARDS[category][genderKey]['50+'];
+          }
       }
-      standards = METRIC_STANDARDS[category][genderKey][ageKey];
-      if (!standards) standards = METRIC_STANDARDS[category][genderKey]['60+'] || METRIC_STANDARDS[category][genderKey]['50+'];
   }
 
+  // 기준표를 못 찾았을 때 (여기로 빠져서 50점이 나왔던 것임)
   if (!standards) return 50;
 
   // 2. [NEW] 정밀 점수 계산 (보간법)
@@ -213,15 +226,19 @@ export const analyzeRunBTI = (results, age, gender) => {
 
   const plankSec = (plank || 0) / 1000;
   const wallSitSec = (wallSit || 0) / 1000;
-  const hoppingSec = (hopping || 0) / 1000;
-  const squatCount = squat || 0;
-  const flexCm = flexibility || 0;
+  // [수정 포인트 1] 호핑: 1000으로 나누지 말고 개수 그대로 사용 + 숫자 변환
+  const hoppingCount = Number(hopping) || 0; 
+  
+  // [수정 포인트 2] 스쿼트: 반드시 Number()로 감싸서 숫자로 변환!
+  const squatCount = Number(squat) || 0;
+  
+  const flexCm = Number(flexibility) || 0; // 유연성도 숫자로 변환 추천
 
   const scores = {
     plank: getScoreFromGrade('plank', plankSec, age, gender),
     wallSit: getScoreFromGrade('wallSit', wallSitSec, age, gender),
     squat: getScoreFromGrade('squat', squatCount, age, gender),
-    hopping: getScoreFromGrade('hopping', hoppingSec, age, gender),
+    hopping: getScoreFromGrade('hopping', hoppingCount, age, gender),
     flexibility: getScoreFromGrade('flexibility', flexCm, age, gender)
   };
 
